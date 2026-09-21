@@ -1,12 +1,21 @@
 {
-  "generated_at": "2026-09-21 10:58 UTC",
+  "generated_at": "2026-09-21 11:03 UTC",
   "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
   "scenarios": [
+    {
+      "scenario": "U01",
+      "test": "tests/unit/test_doctor.py::test_U01_doctor_reports_what_it_saw",
+      "status": "passed",
+      "duration_s": 0.13,
+      "detail": "",
+      "title": "Diagnose the machine and lock the engine series",
+      "notes": []
+    },
     {
       "scenario": "U02",
       "test": "tests/unit/test_scaffold_and_cli.py::test_U02_init_is_idempotent_and_keeps_manual_edits",
       "status": "passed",
-      "duration_s": 0.08,
+      "duration_s": 0.09,
       "detail": "",
       "title": "Initialize a project, and re-run the initialization",
       "notes": []
@@ -24,7 +33,7 @@
       "scenario": "U04",
       "test": "tests/unit/test_bundles.py::test_U04_wrap_describes_only_what_the_file_says",
       "status": "passed",
-      "duration_s": 0.35,
+      "duration_s": 0.33,
       "detail": "",
       "title": "Wrap a third-party GLB into a bundle",
       "notes": []

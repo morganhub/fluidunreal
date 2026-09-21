@@ -1,0 +1,16 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "",
+	"Category": "",
+	"Description": "fluidunreal test bed: Blueprint-only, no C++, no marketplace plugin, no committed .uasset. Interchange carries glTF import in 5.8 and the engine enables it; only the Python plugins are requested here. The scene is built in code at test time.",
+	"Plugins": [
+		{
+			"Name": "PythonScriptPlugin",
+			"Enabled": true
+		},
+		{
+			"Name": "PythonAutomationTest",
+			"Enabled": true
+		}
+	]
+}

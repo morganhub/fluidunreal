@@ -1,0 +1,67 @@
+{
+  "schema_version": "1.0",
+  "dependencies": {
+    "unreal.editor": {
+      "name": "Epic Games",
+      "version": "5.8.2",
+      "path": null,
+      "sha256": "ae92f55952a3c9a7def90983fcf5aedce52d8ee8e4565fbd923985e9d9d3e05e",
+      "source": "default-install",
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "available"
+    },
+    "unreal.project": {
+      "name": "fluidunreal",
+      "version": null,
+      "path": null,
+      "sha256": null,
+      "source": null,
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "available"
+    },
+    "unreal.python": {
+      "name": "PythonScriptPlugin",
+      "version": "3.11.8",
+      "path": null,
+      "sha256": null,
+      "source": null,
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "available"
+    },
+    "gltf.khronos_validator": {
+      "name": "Khronos",
+      "version": null,
+      "path": null,
+      "sha256": null,
+      "source": null,
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "available"
+    },
+    "python.uv": {
+      "name": "Astral",
+      "version": "uv 0.9.25 (38fcac0f3 2026-01-13)",
+      "path": null,
+      "sha256": null,
+      "source": null,
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "available"
+    },
+    "fluidblend.kit": {
+      "name": "fluidblend",
+      "version": "0.6.0",
+      "path": null,
+      "sha256": null,
+      "source": null,
+      "verified_at": "2026-09-21T11:01:59.021Z",
+      "status": "not_configured"
+    }
+  },
+  "extra": {
+    "generated_at": "2026-09-21T11:01:59.021Z",
+    "fluidunreal": "0.1.0.dev0",
+    "unreal_locked_series": "5.8",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "python": "3.13.5",
+    "locked_unreal_series": "5.8"
+  }
+}

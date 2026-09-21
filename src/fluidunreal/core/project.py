@@ -11,13 +11,14 @@ from __future__ import annotations
 
 import os
 import re
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from fluidblend.contracts.project import Permissions
 from fluidblend.core.atomic import atomic_write_text, read_json
-from fluidblend.core.hashing import now_iso, sha256_bytes
+from fluidblend.core.hashing import now_iso, sha256_bytes, sha256_file
 from fluidblend.core.journal import Journal
 from fluidblend.core.paths import normalize_root
 from pydantic import ValidationError
@@ -231,6 +232,11 @@ def scaffold_project(
             target.parent.mkdir(parents=True, exist_ok=True)
             atomic_write_text(target, content)
 
+    if uproject == TEST_BED:
+        bed = install_test_bed(root, dry_run=dry_run)
+        report["created_files"].extend(bed["created_files"])
+        report["test_bed"] = bed["test_bed"]
+
     if not dry_run:
         journal = Journal(root / "state" / "journal.jsonl")
         if report["first_init"]:
@@ -249,6 +255,50 @@ def scaffold_project(
                 conflicts=[c["path"] for c in report["conflicts"]],
             )
     return report
+
+
+def template_problems(template: Path) -> list[str]:
+    """Files of the test bed that differ from the hashes the kit pinned.
+
+    A modified test bed is not the one lot 0 proved anything about. The mismatch is reported and
+    the run refuses; it is never quietly repaired.
+    """
+    manifest = template / "template-manifest.json"
+    if not manifest.is_file():
+        return [f"no template-manifest.json in {template}"]
+    try:
+        pinned = read_json(manifest).get("files") or {}
+    except (ValueError, OSError) as exc:
+        return [f"template-manifest.json is unreadable: {exc}"]
+    problems = []
+    for relative, digest in sorted(pinned.items()):
+        path = template / relative
+        if not path.is_file():
+            problems.append(f"missing from the template: {relative}")
+        elif sha256_file(path) != digest:
+            problems.append(f"differs from its pinned hash: {relative}")
+    return problems
+
+
+def install_test_bed(root: Path, *, dry_run: bool = False) -> dict[str, Any]:
+    """Copy the pinned test bed into the project. Never over something already there."""
+    template = templates_dir() / "game-unreal"
+    problems = template_problems(template)
+    if problems:
+        raise ProjectError("the test bed template does not match its pinned hashes: " + "; ".join(problems))
+    destination = root / "ue" / "FluidUnrealTestBed"
+    written: list[str] = []
+    for entry in sorted(template.rglob("*")):
+        if not entry.is_file() or entry.name == "template-manifest.json":
+            continue
+        target = destination / entry.relative_to(template)
+        if target.exists():
+            continue
+        written.append(target.relative_to(root).as_posix())
+        if not dry_run:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(entry, target)
+    return {"test_bed": str(destination), "created_files": written}
 
 
 def dir_size_bytes(path: Path) -> int:

@@ -11,12 +11,14 @@ import sys
 from pathlib import Path
 
 from fluidblend.core import exit_codes
+from fluidblend.core.atomic import read_json
 
 import fluidunreal
 from fluidunreal.contracts.operations import OPERATIONS
 from fluidunreal.contracts.schema_export import check_up_to_date, export_all
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
 from fluidunreal.core.tasks import TaskRunner
+from fluidunreal.doctor import compare_lock, run_doctor, write_lock
 
 
 def _print(data: object, as_json: bool) -> None:
@@ -70,6 +72,44 @@ def cmd_init(args: argparse.Namespace) -> int:
 def cmd_inspect(args: argparse.Namespace) -> int:
     project = load_project(Path(args.project))
     _print(inspect_project(project), args.json)
+    return exit_codes.OK
+
+
+def cmd_doctor(args: argparse.Namespace) -> int:
+    project = load_project(Path(args.project))
+    report = run_doctor(project, probe=not args.no_probe)
+    lock_path = Path(args.write_lock) if args.write_lock else None
+    drift: list[str] = []
+    existing = project.root / project.manifest.dependency_lock
+    if existing.is_file():
+        drift = compare_lock(report, read_json(existing))
+    if lock_path:
+        write_lock(project, report, lock_path)
+    payload = report.model_dump(mode="json")
+    payload["drift_from_lock"] = drift
+    if args.json:
+        _print(payload, True)
+    else:
+        for capability in report.capabilities:
+            line = f"{capability.capability_id:<26} {capability.status:<16} {capability.version or ''}"
+            print(line.rstrip())
+            for restriction in capability.restrictions:
+                print(f"    - {restriction}")
+            if capability.error:
+                print(f"    ! {capability.error}")
+        for entry in drift:
+            print(f"drift: {entry}")
+    # A diagnostic never fails a run: it reports. Only a missing project is a blocked exit.
+    return exit_codes.OK
+
+
+def cmd_capabilities(args: argparse.Namespace) -> int:
+    project = load_project(Path(args.project))
+    path = project.root / "state" / "diagnostics" / "capabilities.json"
+    if not path.is_file():
+        print("no capabilities.json yet: run `fluidunreal doctor --project .`", file=sys.stderr)
+        return exit_codes.BLOCKED
+    _print(read_json(path), True)
     return exit_codes.OK
 
 
@@ -128,6 +168,18 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_inspect)
+
+    p = sub.add_parser("doctor", help="probe the engine and write capabilities.json")
+    p.add_argument("--project", required=True)
+    p.add_argument("--no-probe", action="store_true", help="find the editor without starting it")
+    p.add_argument("--write-lock", metavar="PATH", help="record what was observed; never implicit")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_doctor)
+
+    p = sub.add_parser("capabilities", help="read the last diagnostic without probing again")
+    p.add_argument("--project", required=True)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_capabilities)
 
     p = sub.add_parser("run", help="execute a typed request")
     p.add_argument("--project", required=True)

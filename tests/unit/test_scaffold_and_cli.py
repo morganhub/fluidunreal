@@ -17,7 +17,9 @@ def test_U02_init_is_idempotent_and_keeps_manual_edits(tmp_path: Path):
     root = tmp_path / "Mon Jeu é"
     report = scaffold_project(root, project_id="my-game", name="Mon Jeu")
     assert (root / "project.json").exists() and (root / "config" / "permissions.json").exists()
-    assert len(report["created_files"]) == 7 and report["conflicts"] == []
+    # Seven scaffold files plus the three of the pinned test bed.
+    assert len(report["created_files"]) == 10 and report["conflicts"] == []
+    assert (root / "ue" / "FluidUnrealTestBed" / "FluidUnrealTestBed.uproject").is_file()
     outside = [p for p in tmp_path.rglob("*") if root not in p.parents and p != root]
     assert outside == [], f"writes outside the scope: {outside}"
 
@@ -91,7 +93,7 @@ def test_inspect_reports_the_engine_working_dirs_without_counting_them(tmp_path:
     facts = inspect_project(project)
     assert facts["engine_working_dirs_bytes"]["Saved"] == 4096
     assert facts["bundles"] == [] and facts["imported_assets"] == []
-    assert facts["uproject_exists"] is False
+    assert facts["uproject_exists"] is True, "init laid the test bed down"
     assert facts["engine_series"] == "5.8"
 
 
