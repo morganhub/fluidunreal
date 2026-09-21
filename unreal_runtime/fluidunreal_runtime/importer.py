@@ -16,6 +16,7 @@ area and publishes nothing at all.
 
 import os
 import shutil
+import time
 
 import unreal
 
@@ -305,6 +306,11 @@ def run(ctx, request, builder):
         renamed = _rename(created, asset_id, clips, builder)
         _mark(created, ctx, instance, builder)
         unreal.EditorAssetLibrary.save_directory(staging, only_if_is_dirty=False, recursive=True)
+        pause = float(ctx.test_hooks.get("pause_before_publish_s") or 0)
+        if pause:
+            # Test only (U12): the staging is on disk and nothing is published. An editor killed
+            # here is the interruption the kit must conclude without guessing.
+            time.sleep(pause)
         published = _publish(ctx, asset_id, staging, builder)
         _clean_staging(ctx, staging, builder)
     except BaseException:
