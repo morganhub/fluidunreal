@@ -487,6 +487,17 @@ class TaskRunner:
                 f"{spec.name} is not available in this lot",
                 recovery="`fluidunreal ops --all --json` lists what is available and what is not",
             )
+        # Someone else's Unreal project is checked before a task exists or an editor is looked for:
+        # what is wrong with it does not depend on which engine is installed.
+        if spec.backend == "unreal" and not is_test_bed(self.project):
+            problems = user_project_problems(self.project)
+            if problems:
+                raise TaskAbort(
+                    ErrorCode.SCENE_CONFLICT,
+                    "the Unreal project cannot be written safely: " + problems[0],
+                    recovery="fix what is listed in details; the kit changes nothing outside Content/Fluid",
+                    details={"problems": problems},
+                )
         verdict = operation_allowed(self.project.permissions, spec)
         if not verdict.allowed:
             raise TaskAbort(ErrorCode.PERMISSION_REQUIRED, verdict.reason or "not permitted")
@@ -657,17 +668,6 @@ class TaskRunner:
         out_dir: Path,
     ) -> OperationResult:
         """One dedicated editor, one operation. Never the session someone has open."""
-        # Before the editor is even looked for: what is wrong with someone else's project does not
-        # depend on which engine is installed.
-        if not is_test_bed(self.project):
-            problems = user_project_problems(self.project)
-            if problems:
-                raise TaskAbort(
-                    ErrorCode.SCENE_CONFLICT,
-                    "the Unreal project cannot be written safely: " + problems[0],
-                    recovery="fix what is listed in details; the kit changes nothing outside Content/Fluid",
-                    details={"problems": problems},
-                )
         editor, notes = unreal_discovery.select(self.project.local.unreal_editor_executable)
         if editor is None:
             raise TaskAbort(

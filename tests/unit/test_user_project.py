@@ -112,3 +112,5 @@ def test_the_runner_refuses_before_it_looks_for_an_editor(tmp_path: Path, fixtur
     assert outcome.exit_code == exit_codes.CONFLICT
     assert "PythonScriptPlugin" in outcome.result.errors[0].message
     assert not project.content_root.exists()
+    assert outcome.task is None, "refused before a task existed"
+    assert outcome.result.errors[0].details["problems"]
