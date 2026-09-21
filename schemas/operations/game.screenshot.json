@@ -22,12 +22,14 @@
   "title": "GameScreenshotParams",
   "type": "object",
   "x-fluidunreal": {
-    "available": false,
+    "available": true,
     "backend": "unreal",
     "cli_command": null,
     "input_paths": [],
     "lot": "P1",
-    "modes": [],
+    "modes": [
+      "batch"
+    ],
     "op_class": "render",
     "optional_dependencies": [
       "unreal.gpu"

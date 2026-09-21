@@ -301,7 +301,6 @@ OPERATIONS: dict[str, OperationSpec] = {
             "render",
             "P1",
             "Render one off-screen frame and the share of it the character covers",
-            available=False,
             requires_bundle=True,
             requires_asset=True,
         ),

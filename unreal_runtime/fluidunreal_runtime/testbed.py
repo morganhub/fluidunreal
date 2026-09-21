@@ -11,6 +11,10 @@ Four things lot 0 had to get right, each of which was wrong first and looked fin
 - `add_movement_input` needs `force=True` and a possessed pawn, or the input is dropped.
 - the PIE duplicate does not inherit single-node playback: it has to be re-armed.
 
+The bed runs three phases, as a game would: the character stands with nothing playing, walks
+with the clip looping until the clip has wrapped at least once, then stands again and the clip is
+stopped. On the way it passes the prop, which the bed attaches to the right hand.
+
 The report is written **before** the editor is asked to quit. A run that writes no report proves
 nothing, and the engine treats a missing one as an unknown state rather than a failure.
 
@@ -21,10 +25,14 @@ reference pose, a local translation that stays constant for a bone that only rot
 relative to the actor and found every bone, spine and forehead included, moving the same 10 cm in
 0.34 s: that was the clip carrying the whole body forward at 30 cm/s. The reference walk is declared
 in place and travels 0.58 m per loop; the audit now fails it for that. The check reads the distance
-between the two feet, which no displacement of the whole body can change.
+between the two feet, which no displacement of the whole body can change, so it is read while the
+character walks.
 """
 
+import math
 import os
+import platform
+import time
 
 import unreal
 
@@ -37,19 +45,41 @@ CUBE = "/Engine/BasicShapes/Cube.Cube"
 FLOOR_Z = 0.0
 WALL_X = 400.0
 PROP_X = 200.0
+PLAYER_START = unreal.Vector(-800.0, -900.0, 150.0)
+# Input is along +X only: a character that drifts sideways more than this was pushed.
+LATERAL_CM = 5.0
 # The movement component parks the capsule slightly above the floor. Measured at 2.15 cm on 5.8.2,
 # so the tolerance is 3 cm and the reason is written down rather than the number fudged.
 FLOOR_TOLERANCE_CM = 3.0
-TOTAL_TICKS = 210
-# Stand still, then walk. The still window is where deformation can be told from translation.
-STILL_FROM = 40
-STILL_UNTIL = 80
-WALK_UNTIL = 195
-# How much the distance between the feet must change while the actor stands still.
+# Phases, counted in steps from the tick the bed became ready. The capsule has settled by
+# IDLE_FROM; the idle window is long enough to see a pose that should not move.
+IDLE_FROM = 40
+IDLE_UNTIL = 80
+# The walk lasts until the clip has wrapped, which is what looping means, and at least long enough
+# to reach the wall. Ticks are not a fixed 1/60 s under PIE (0.0085 s of clip per tick was measured
+# on 5.8.2), so a fixed count would either miss the wrap or waste minutes.
+WALK_MIN_STEPS = 120
+WALK_MAX_STEPS = 600
+STOP_STEPS = 60
+# Speed below which the character counts as standing, and at which the bed stops the clip.
+STANDING_CM_S = 1.0
+# How much the distance between the feet must change while walking; and how little it may while
+# standing (a pose that is not played does not move at all, so the margin is only float noise).
 BONE_TRAVEL_CM = 1.0
-# First steps of the window are skipped: the pose may still be the reference one.
+STILL_CM = 0.05
+# First walking steps are skipped: the pose may still be the reference one.
 SETTLE_STEPS = 5
 PAIRS = (("DEF-foot_L", "DEF-foot_R"), ("DEF-hand_L", "DEF-hand_R"))
+FEET = PAIRS[0]
+# The spec's pickup distance, measured as the closest approach.
+PICKUP_CM = 50.0
+# Where the bed picks the prop up: before the capsule (radius 34 cm) meets the prop's near face at
+# 180 cm. Picking it up at 50 cm let the capsule hit it first and slide 17.6 cm sideways.
+GRAB_CM = 60.0
+UNREADABLE = "unreadable"
+HOLD_CM = 5.0
+HAND_TRAVEL_CM = 10.0
+EMPTY_CM = 25.0
 # The PIE world takes a few ticks to exist; beyond this it never will.
 READY_DEADLINE_TICKS = 120
 PROXY_SUFFIX = "proxytruerootjoint"
@@ -140,23 +170,36 @@ class Bed:
         self.playing = None
         self.play_via = None
         self.started_with = None
-        self.sample_bone = None
-        self.first_bone = None
-        self.start_x = None
         self.wall_samples = []
         self.closest_to_prop = None
         self.finished = False
         self.report = None
         self.on_finished = None
         self.ready_tick = 0
-        self.bone_travel = 0.0
-        self.bones = []
-        self.first_positions = {}
-        self.travel = {}
         self.first_playback = (None, None)
-        self.still_origin = None
-        self.spans = {}
+        self.last_position = None
         self.tick_options = []
+        self.anim_name = None
+        self.prop = None
+        self.prop_origin = None
+        self.held = None
+        self.hand_at_pickup = None
+        self.mesh_offset = None
+        self.facing_error = None
+        self.positions = {}
+        self.start = None
+        self.idle_spans = []
+        self.idle_playing = []
+        self.idle_assets = set()
+        self.walk_from = 0
+        self.walk_until = 0
+        self.walk_spans = {}
+        self.walk_playing = []
+        self.wraps = 0
+        self.stopped_at = None
+        self.stand_spans = []
+        self.stand_playing = []
+        self.started = time.monotonic()
 
     # --- reporting ----------------------------------------------------------------------
 
@@ -191,13 +234,20 @@ class Bed:
             "aborted": aborted,
             "notes": self.notes,
             "ticks": self.tick,
+            "wall_time_ms": int((time.monotonic() - self.started) * 1000),
+            # Never a frame rate or a GPU figure: what ran, not how fast it could.
+            "machine": {"platform": platform.platform(), "processor": platform.processor()},
         }
 
     # --- scene --------------------------------------------------------------------------
 
     def build(self):
-        subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
-        subsystem.new_level("/Game/Fluid/_testbed/SmokeBed")
+        # A blank map that is never saved. `new_level` wrote SmokeBed.umap into the project on every
+        # run, and on the next run failed on the existing path, so the bed was built into whatever
+        # map was open: its sky, its landscape and its lights changed with the project's history.
+        world = unreal.EditorLoadingAndSavingUtils.new_blank_map(False)
+        if world is None:
+            raise OpError("INTERNAL_ERROR", "the editor could not open a blank map for the bed")
         cube = unreal.EditorAssetLibrary.load_asset(CUBE)
 
         def block(label, location, scale):
@@ -211,7 +261,15 @@ class Bed:
 
         block("Floor", unreal.Vector(0.0, 0.0, -50.0), unreal.Vector(20.0, 20.0, 1.0))
         block("Wall", unreal.Vector(WALL_X, 0.0, 100.0), unreal.Vector(0.2, 10.0, 4.0))
-        block("Prop", unreal.Vector(PROP_X, 0.0, 20.0), unreal.Vector(0.4, 0.4, 0.4))
+        # Without a PlayerStart, PIE spawns its default pawn at the origin, inside the character's
+        # capsule: measured, it threw the character from (0, 0) to (187, -191) before any input,
+        # and character_moves counted those 187 cm as walking. It starts behind the camera instead.
+        unreal.EditorLevelLibrary.spawn_actor_from_class(
+            unreal.PlayerStart, PLAYER_START, unreal.Rotator(roll=0.0, pitch=0.0, yaw=0.0)
+        )
+        prop = block("Prop", unreal.Vector(PROP_X, 0.0, 20.0), unreal.Vector(0.4, 0.4, 0.4))
+        # A static actor cannot be attached to anything: the pickup needs it movable.
+        prop.static_mesh_component.set_mobility(unreal.ComponentMobility.MOVABLE)
 
         self.editor_character = unreal.EditorLevelLibrary.spawn_actor_from_class(
             unreal.Character, unreal.Vector(0.0, 0.0, 100.0), unreal.Rotator(0.0, 0.0, 0.0)
@@ -225,8 +283,85 @@ class Bed:
             raise OpError("INTERNAL_ERROR", "no setter for the skeletal mesh on this series")
         component.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
         force_pose_ticking(component, self.builder)
-        if self.anim is not None:
-            play_single_animation(component, self.anim, self.builder)
+        self.place_mesh(self.editor_character, component)
+
+    def place_mesh(self, actor, component):
+        """Stand the mesh on the capsule's floor, facing the way the character walks.
+
+        A `Character` carries its mesh at the capsule's centre and walks along +X. Left as it was,
+        the imported mesh stood 88 cm above the floor, and it walked sideways: its skeleton faces
+        +Y, which is where glTF's forward lands. Nothing measured headless showed either; the
+        frame of lot 0 did. The facing is measured on the skeleton, from the foot to its toe, not
+        assumed from the axis convention.
+        """
+        half = 88.0
+        try:
+            half = actor.capsule_component.get_scaled_capsule_half_height()
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the capsule half height is unreadable: %s" % error)
+        origin = actor.get_actor_location()
+        facing = None
+        pair = self.foot_and_toe()
+        if pair:
+            try:
+                foot = component.get_socket_location(pair[0]) - origin
+                toe = component.get_socket_location(pair[1]) - origin
+                facing = math.degrees(math.atan2(toe.y - foot.y, toe.x - foot.x))
+            except Exception as error:  # noqa: BLE001
+                self.builder.warn("the facing could not be measured: %s" % error)
+        if facing is None:
+            # glTF's +Z forward lands on +Y: stated as an assumption, not passed off as measured.
+            facing = 90.0
+            self.builder.limit("the mesh's facing was not measured: +Y, glTF's forward, is assumed")
+        # A foot splays a few degrees: a facing that close to an axis is that axis.
+        snapped = round(facing / 90.0) * 90.0
+        yaw = -(snapped if abs(facing - snapped) <= 15.0 else facing)
+        component.set_relative_location(unreal.Vector(0.0, 0.0, -half), False, False)
+        component.set_relative_rotation(unreal.Rotator(roll=0.0, pitch=0.0, yaw=yaw), False, False)
+        self.mesh_offset = {
+            "z_cm": round(-half, 3),
+            "yaw_deg": round(yaw, 2),
+            "measured_facing_deg": round(facing, 2),
+            "measured_on": list(pair) if pair else None,
+            "why": "a Character walks along +X with its mesh at the capsule's centre",
+        }
+
+    def foot_and_toe(self):
+        """A foot and a toe of the same side, from the bundle's reference pose."""
+        names = [r["bone"] for r in self.instance.get("reference_pose") or []]
+        for foot in names:
+            if "foot" not in foot.lower():
+                continue
+            side = foot.rsplit(".", 1)[-1]
+            for toe in names:
+                if "toe" in toe.lower() and toe.rsplit(".", 1)[-1] == side:
+                    return foot.replace(".", "_"), toe.replace(".", "_")
+        return None
+
+    def facing_error_deg(self, actor, component):
+        """Angle between where the standing mesh faces and where the character walks, +X."""
+        pair = self.foot_and_toe()
+        if not pair:
+            return None
+        try:
+            foot, toe = component.get_socket_location(pair[0]), component.get_socket_location(pair[1])
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the facing is unreadable: %s" % error)
+            return None
+        forward = actor.get_actor_forward_vector()
+        angle = math.degrees(math.atan2(toe.y - foot.y, toe.x - foot.x) - math.atan2(forward.y, forward.x))
+        return round((angle + 180.0) % 360.0 - 180.0, 2)
+
+    def track(self, label, actor):
+        where = actor.get_actor_location()
+        self.positions[label] = [round(where.x, 2), round(where.y, 2), round(where.z, 2)]
+
+    def lowest_reference_bone(self):
+        rows = self.instance.get("reference_pose") or []
+        if not rows:
+            return None, None
+        row = min(rows, key=lambda r: float(r["head_m"][2]))
+        return row["bone"].replace(".", "_"), float(row["head_m"][2]) * 100.0
 
     def resolve(self):
         """The actor that simulates lives in the PIE world; the editor one is a statue."""
@@ -249,6 +384,13 @@ class Bed:
                 self.note("possessed by %s" % controller.get_name())
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the character could not be possessed: %s" % error)
+        # Any other pawn is taken out of the bed: hidden and without collision, never destroyed.
+        # Destroying the default pawn ended the PIE session in lot 0.
+        for pawn in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.Pawn):
+            if pawn != chosen:
+                pawn.set_actor_hidden_in_game(True)
+                pawn.set_actor_enable_collision(False)
+                self.note("taken out of the bed: %s" % pawn.get_name())
         # The PIE duplicate does not inherit single-node playback: re-arm it, and make it tick
         # its pose although nothing is rendered under -nullrhi.
         try:
@@ -262,28 +404,55 @@ class Bed:
             self.note("PIE anim instance: %s" % (chosen.mesh.get_anim_instance() is not None))
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the PIE animation mode is unreadable: %s" % error)
-        if self.anim is not None:
-            self.play_via = play_single_animation(chosen.mesh, self.anim, self.builder)
+        for candidate in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.StaticMeshActor):
+            if candidate.get_actor_label() == "Prop":
+                self.prop = candidate
+                self.prop_origin = candidate.get_actor_location()
+        if self.prop is None:
+            self.note("the prop was not found in the PIE world")
         return chosen
 
-    def candidate_bones(self, component):
-        """Every reference bone the skeleton has, plus the feet and the hands.
+    def hand_socket(self, component):
+        """Where the prop goes: a grip socket if the bundle has one, else the right hand bone."""
+        grips = self.instance.get("grips") or {}
+        names = self.bone_names(component)
+        for name in ["grip_primary"] + sorted(grips):
+            if name in names or component.does_socket_exist(name):
+                return name, "grip socket"
+        hand = "DEF-hand_R"
+        if hand in names:
+            self.builder.limit("the bundle declares no grip: the prop is held at the right hand bone")
+            return hand, "right hand bone"
+        self.builder.limit("no grip and no right hand bone: the prop is held at the root")
+        return names[0] if names else "", "root"
 
-        Each one's travel is reported, because a body that drifts inside its capsule shows there.
-        The check itself is on the pairs in `PAIRS`.
-        """
-        wanted = [r["bone"].replace(".", "_") for r in self.instance.get("reference_pose") or []]
-        wanted += ["DEF-foot_L", "DEF-foot_R", "DEF-hand_L", "DEF-hand_R"]
+    def assigned_clip(self, component):
+        """The clip the single-node player holds, by name; "None" when it holds nothing."""
         try:
-            present = set(str(component.get_bone_name(i)) for i in range(component.get_num_bones()))
+            asset = component.get_anim_instance().get_animation_asset()
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the assigned clip is unreadable: %s" % error)
+            return UNREADABLE
+        return "None" if asset is None else asset.get_name()
+
+    def bone_names(self, component):
+        try:
+            return [str(component.get_bone_name(i)) for i in range(component.get_num_bones())]
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the PIE skeleton could not be enumerated: %s" % error)
             return []
-        seen = []
-        for name in wanted:
-            if name in present and name not in seen:
-                seen.append(name)
-        return seen
+
+    def span(self, component, pair):
+        """Distance between two bones. No displacement of the whole body can change it."""
+        left, right = self.bone(component, pair[0]), self.bone(component, pair[1])
+        if left is None or right is None:
+            return None
+        return (left - right).length()
+
+    @staticmethod
+    def spread(values):
+        values = [v for v in values if v is not None]
+        return round(max(values) - min(values), 3) if len(values) >= 2 else None
 
     def playback(self, component):
         """Where the single-node player is in the clip, and whether it says it is playing."""
@@ -328,118 +497,241 @@ class Bed:
         if step == 1:
             self.check("map_loaded", True, "PIE world obtained")
             self.check("character_spawned", self.playing is not None, {"in_pie_world": True})
-            count = component.get_num_bones()
-            names = [str(component.get_bone_name(i)) for i in range(count)]
+            names = self.bone_names(component)
             added = [n for n in names if n.lower().endswith(PROXY_SUFFIX)]
             expected = int(self.instance.get("bone_count") or 0)
             self.check(
                 "skeleton_bone_count",
-                (count - len(added)) == expected if expected else None,
-                {"got": count, "expected": expected, "added_by_importer": added},
+                (len(names) - len(added)) == expected if expected else None,
+                {"got": len(names), "expected": expected, "added_by_importer": added},
             )
-            self.check("walk_clip_found", self.anim is not None, {"played_via": self.play_via})
-            self.start_x = actor.get_actor_location().x
-        if step == STILL_FROM:
+            self.check("walk_clip_found", self.anim is not None, {"clip": self.anim_name})
+            self.track("ready", actor)
+        if step == IDLE_FROM:
             half = 88.0
             try:
                 half = actor.capsule_component.get_scaled_capsule_half_height()
             except Exception as error:  # noqa: BLE001
                 self.builder.warn("the capsule half height is unreadable: %s" % error)
             bottom = actor.get_actor_location().z - half
+            # The feet, not the capsule: the capsule stood on the floor for three lots while the
+            # mesh floated 88 cm above it. The lowest reference bone must be at its bundle height.
+            bone, expected = self.lowest_reference_bone()
+            height = None
+            if bone:
+                try:
+                    height = component.get_socket_location(bone).z - FLOOR_Z
+                except Exception as error:  # noqa: BLE001
+                    self.builder.warn("the height of %s is unreadable: %s" % (bone, error))
             self.check(
                 "stands_on_floor",
-                abs(bottom - FLOOR_Z) <= FLOOR_TOLERANCE_CM,
+                None if height is None else abs(height - expected) <= FLOOR_TOLERANCE_CM,
                 {
-                    "bottom_z": round(bottom, 3),
-                    "half_height": round(half, 3),
+                    "bone": bone,
+                    "bone_height_cm": None if height is None else round(height, 3),
+                    "bundle_height_cm": None if expected is None else round(expected, 3),
+                    "capsule_bottom_z": round(bottom, 3),
                     "tolerance_cm": FLOOR_TOLERANCE_CM,
-                    "why": "the movement component parks the capsule just above the floor",
+                    "mesh_offset": self.mesh_offset,
+                    "why": "the movement component parks the capsule 2.15 cm above the floor",
                 },
             )
-            self.check("idle_plays_nothing", None, "no idle clip in this bundle: not measured")
-            self.bones = self.candidate_bones(component)
-            self.first_positions = {name: self.bone(component, name) for name in self.bones}
-            self.travel = {name: 0.0 for name in self.bones}
+        if step == IDLE_FROM:
+            self.facing_error = self.facing_error_deg(actor, component)
+            self.track("idle", actor)
+        if IDLE_FROM <= step <= IDLE_UNTIL:
+            self.idle_spans.append(self.span(component, FEET))
+            self.idle_playing.append(self.playback(component)[1])
+            self.idle_assets.add(self.assigned_clip(component))
+        if step == IDLE_UNTIL:
+            moved = self.spread(self.idle_spans)
+            assigned = sorted(str(a) for a in self.idle_assets if a != UNREADABLE)
+            self.check(
+                "idle_plays_nothing",
+                None if moved is None else (moved <= STILL_CM and assigned == ["None"]),
+                {
+                    "feet_distance_range_cm": moved,
+                    "assigned_clip": assigned,
+                    "reported_playing": any(self.idle_playing),
+                    "over_steps": [IDLE_FROM, IDLE_UNTIL],
+                    "why": "no idle clip in this bundle: no clip is assigned and the pose holds. "
+                    "is_playing is reported, not used: on 5.8.2 it is true with no clip at all",
+                },
+            )
+            if self.anim is not None:
+                self.play_via = play_single_animation(component, self.anim, self.builder)
+            self.walk_from = step + 1
+            self.start = actor.get_actor_location()
+            self.track("walk_start", actor)
             self.first_playback = self.playback(component)
-            self.still_origin = actor.get_actor_location()
-        if STILL_FROM < step <= STILL_UNTIL:
-            # Per-bone travel is kept as detail, but it cannot tell deformation from the body
-            # drifting: every bone moved the same ~10 cm here. The distance between the two feet is
-            # immune to any displacement of the whole body. A walk makes it change; a skeleton that
-            # is merely carried along leaves it constant. The hands are read too, and this walk
-            # does not swing them: the recipe says so in its limits.
-            for name in self.bones:
-                first, here = self.first_positions.get(name), self.bone(component, name)
-                if first is not None and here is not None:
-                    self.travel[name] = max(self.travel[name], (here - first).length())
-            if step > STILL_FROM + SETTLE_STEPS:
-                for pair in PAIRS:
-                    left, right = self.bone(component, pair[0]), self.bone(component, pair[1])
-                    if left is not None and right is not None:
-                        self.spans.setdefault(pair, []).append((left - right).length())
-        if step == STILL_UNTIL + 1:
-            position_then, _playing_then = self.first_playback
-            position_now, playing_now = self.playback(component)
-            advanced = (
-                None
-                if position_then is None or position_now is None
-                else abs(position_now - position_then) > 1e-3
+            self.last_position = self.first_playback[0]
+        if self.walk_from and not self.walk_until and step >= self.walk_from:
+            self.walk(actor, component, step)
+        if self.walk_until and step > self.walk_until:
+            self.stand(actor, component, step)
+
+    def walk(self, actor, component, step):
+        walked = step - self.walk_from
+        actor.add_movement_input(unreal.Vector(1.0, 0.0, 0.0), 1.0, True)
+        location = actor.get_actor_location()
+        self.wall_samples.append(location.x)
+        distance = abs(location.x - PROP_X)
+        if self.closest_to_prop is None or distance < self.closest_to_prop:
+            self.closest_to_prop = distance
+        if self.prop is not None and not self.held and distance < GRAB_CM:
+            self.pick_up(actor, component, step)
+        position, playing = self.playback(component)
+        if position is not None and self.last_position is not None and position < self.last_position - 1e-4:
+            self.wraps += 1
+        if position is not None:
+            self.last_position = position
+        self.walk_playing.append(playing)
+        if walked >= SETTLE_STEPS:
+            for pair in PAIRS:
+                self.walk_spans.setdefault(pair, []).append(self.span(component, pair))
+        if walked < WALK_MIN_STEPS or (not self.wraps and walked < WALK_MAX_STEPS):
+            return
+        self.walk_until = step
+        self.track("walked", actor)
+        # Measured from where the walk started: counting from the first tick counted the push.
+        travelled = location.x - self.start.x
+        lateral = location.y - self.start.y
+        self.check(
+            "character_moves",
+            travelled > 10.0 and abs(lateral) <= LATERAL_CM,
+            {
+                "delta_x_cm": round(travelled, 2),
+                "lateral_cm": round(lateral, 2),
+                "lateral_tolerance_cm": LATERAL_CM,
+                "positions_cm": self.positions,
+                # Reported, not gated: the bed turned the mesh itself, from the same skeleton.
+                "facing_error_deg": self.facing_error,
+            },
+        )
+        peak = max(self.wall_samples) if self.wall_samples else 0.0
+        # Both halves matter: it has to reach the wall and be stopped by it.
+        self.check(
+            "wall_stops_it",
+            peak > PROP_X and peak <= WALL_X + 2.0,
+            {"peak_x": round(peak, 2), "wall_x": WALL_X},
+        )
+        self.check(
+            "reaches_pickup",
+            self.closest_to_prop is not None and self.closest_to_prop < PICKUP_CM,
+            {"closest_cm": round(self.closest_to_prop or -1.0, 2), "threshold_cm": PICKUP_CM},
+        )
+        position_then = self.first_playback[0]
+        self.check(
+            "walk_plays_looping",
+            None if position is None else bool(self.wraps > 0 and all(self.walk_playing)),
+            {
+                "position_from_s": None if position_then is None else round(position_then, 4),
+                "position_to_s": None if position is None else round(position, 4),
+                "wraps": self.wraps,
+                "always_playing": all(self.walk_playing),
+                "steps": walked,
+                "why": "looping is the position going back to the start while the player still plays",
+            },
+        )
+        ranges = {"%s~%s" % pair: self.spread(values) for pair, values in self.walk_spans.items()}
+        feet = ranges.get("%s~%s" % FEET)
+        self.check(
+            "walk_clip_moves_bones",
+            None if feet is None else feet > BONE_TRAVEL_CM,
+            {
+                "distance_range_cm_by_pair": ranges,
+                "threshold_cm": BONE_TRAVEL_CM,
+                "why": "the distance between the feet ignores the body moving; only the skeleton "
+                "deforming can make it change. The hands are read too: this walk does not swing them",
+            },
+        )
+
+    def pick_up(self, actor, component, step):
+        """Attach the prop to the hand, the way a game's pickup would, and say where."""
+        socket, kind = self.hand_socket(component)
+        try:
+            self.prop.set_actor_enable_collision(False)
+            rule = unreal.AttachmentRule
+            self.prop.attach_to_component(
+                component, socket, rule.SNAP_TO_TARGET, rule.SNAP_TO_TARGET, rule.KEEP_WORLD, False
             )
-            self.check(
-                "walk_plays_looping",
-                None if advanced is None else bool(advanced and playing_now),
-                {
-                    "position_from_s": None if position_then is None else round(position_then, 4),
-                    "position_to_s": None if position_now is None else round(position_now, 4),
-                    "is_playing": playing_now,
-                },
-            )
-            ranges = {
-                "%s~%s" % pair: round(max(values) - min(values), 3)
-                for pair, values in self.spans.items()
-                if len(values) >= 2
-            }
-            widest = max(ranges.values()) if ranges else None
-            self.check(
-                "walk_clip_moves_bones",
-                None if widest is None else widest > BONE_TRAVEL_CM,
-                {
-                    "distance_range_cm_by_pair": ranges,
-                    "threshold_cm": BONE_TRAVEL_CM,
-                    "per_bone_travel_cm": {k: round(v, 3) for k, v in self.travel.items()},
-                    "over_steps": [STILL_FROM + SETTLE_STEPS, STILL_UNTIL],
-                    "actor_moved_cm": round((actor.get_actor_location() - self.still_origin).length(), 3),
-                    "why": "the distance between paired limbs ignores any rigid offset of the body; "
-                    "only the skeleton deforming can make it change",
-                },
-            )
-        if STILL_UNTIL < step <= WALK_UNTIL:
-            actor.add_movement_input(unreal.Vector(1.0, 0.0, 0.0), 1.0, True)
-            position = actor.get_actor_location().x
-            self.wall_samples.append(position)
-            distance = abs(position - PROP_X)
-            if self.closest_to_prop is None or distance < self.closest_to_prop:
-                self.closest_to_prop = distance
-        if step == WALK_UNTIL + 1:
-            travelled = actor.get_actor_location().x - self.start_x
-            self.check("character_moves", travelled > 10.0, {"delta_x_cm": round(travelled, 2)})
-            peak = max(self.wall_samples) if self.wall_samples else 0.0
-            # Both halves matter: it has to reach the wall and be stopped by it.
-            self.check(
-                "wall_stops_it",
-                peak > PROP_X and peak <= WALL_X + 2.0,
-                {"peak_x": round(peak, 2), "wall_x": WALL_X},
-            )
-            self.check(
-                "reaches_pickup",
-                self.closest_to_prop is not None and self.closest_to_prop < 50.0,
-                {"closest_cm": round(self.closest_to_prop or -1.0, 2), "note": "closest approach"},
-            )
-        if step >= TOTAL_TICKS:
-            self.check("back_to_idle", None, "no idle state in this bed: not measured")
-            self.check("holds_prop", None, "prop attachment is not built in this lot")
-            self.check("pickup_empty", None, "prop attachment is not built in this lot")
-            self.finish()
+            self.held = {"socket": socket, "kind": kind, "at_step": step}
+            self.hand_at_pickup = component.get_socket_location(socket)
+        except Exception as error:  # noqa: BLE001
+            self.note("the prop could not be attached: %s" % error)
+
+    def stand(self, actor, component, step):
+        speed = actor.get_velocity().length()
+        position, playing = self.playback(component)
+        if speed < STANDING_CM_S and playing and not self.stopped_at:
+            # The bed's own state machine: no input and no speed means idle, and idle plays nothing.
+            component.stop()
+            self.stopped_at = step
+        if step > self.walk_until + STOP_STEPS - 20:
+            self.stand_spans.append(self.span(component, FEET))
+            self.stand_playing.append(self.playback(component)[1])
+        if step < self.walk_until + STOP_STEPS:
+            return
+        moved = self.spread(self.stand_spans)
+        self.check(
+            "back_to_idle",
+            None
+            if moved is None
+            else bool(speed < STANDING_CM_S and moved <= STILL_CM and not any(self.stand_playing)),
+            {
+                "speed_cm_s": round(speed, 3),
+                "feet_distance_range_cm": moved,
+                "clip_stopped_at_step": self.stopped_at,
+                "why": "without input the character stops, and the clip is stopped with it",
+            },
+        )
+        self.check_prop(component)
+        self.finish()
+
+    def check_prop(self, component):
+        if self.prop is None:
+            self.check("holds_prop", None, "the prop was not found in the PIE world")
+            self.check("pickup_empty", None, "the prop was not found in the PIE world")
+            return
+        parent = self.prop.get_attach_parent_actor()
+        gap = moved = None
+        if self.held:
+            target = component.get_socket_location(self.held["socket"])
+            gap = (self.prop.get_actor_location() - target).length()
+            moved = (target - self.hand_at_pickup).length()
+        # Snapping puts the prop on the hand by construction, so a gap of zero at pickup proves
+        # nothing. A zero after the hand has carried it across the floor is what holding means.
+        self.check(
+            "holds_prop",
+            bool(self.held)
+            and parent == self.playing
+            and gap is not None
+            and gap <= HOLD_CM
+            and moved > HAND_TRAVEL_CM,
+            {
+                "attached_to": None if parent is None else parent.get_name(),
+                "held_at": self.held or None,
+                "distance_to_hand_cm": None if gap is None else round(gap, 3),
+                "hand_moved_since_pickup_cm": None if moved is None else round(moved, 2),
+                "tolerance_cm": HOLD_CM,
+            },
+        )
+        world = game_world(self.builder)
+        occupants = []
+        for candidate in unreal.GameplayStatics.get_all_actors_of_class(world, unreal.StaticMeshActor):
+            if candidate.get_actor_label() in ("Floor", "Wall"):
+                continue
+            if (candidate.get_actor_location() - self.prop_origin).length() <= EMPTY_CM:
+                occupants.append(candidate.get_actor_label())
+        self.check(
+            "pickup_empty",
+            not occupants,
+            {
+                "occupants": occupants,
+                "prop_moved_cm": round((self.prop.get_actor_location() - self.prop_origin).length(), 2),
+                "radius_cm": EMPTY_CM,
+            },
+        )
 
     def bone(self, component, name):
         """Where a bone is relative to its own actor, so the actor walking does not count.
@@ -515,10 +807,14 @@ def _published(ctx, asset_id, clip_id, builder):
         if anim is None:
             builder.warn("clip %s is not in %s: the bed runs without a clip" % (clip_id, content_path))
     else:
-        anim = anims[0][1] if anims else None
+        # The first clip whose id says walk; the first clip at all when none does.
+        walks = [pair for pair in anims if "walk" in pair[0].lower()]
+        chosen = (walks or anims or [(None, None)])[0]
+        anim = chosen[1]
     if anim is None and not clip_id:
         raise OpError("VALIDATION_FAILED", "the published version has no animation")
-    return content_path, version, mesh, anim
+    name = next((n for n, a in anims if a is anim), None) if anim is not None else None
+    return content_path, version, mesh, anim, name
 
 
 def run(ctx, request, builder):
@@ -526,7 +822,7 @@ def run(ctx, request, builder):
     asset_id = request["target"].get("asset_id")
     instance = ctx.instance(asset_id)
     clip_id = (request.get("parameters") or {}).get("clip_id")
-    content_path, version, mesh, anim = _published(ctx, asset_id, clip_id, builder)
+    content_path, version, mesh, anim, anim_name = _published(ctx, asset_id, clip_id, builder)
 
     def publish(report):
         """Called on the tick when the bed is done. Writes the result, then quits."""
@@ -546,7 +842,10 @@ def run(ctx, request, builder):
         )
         for name in report["not_run_checks"]:
             builder.limit("check %s was not measured by this bed" % name)
-        builder.limit("this is the kit's test bed, not your game: one character, one clip, no image")
+        builder.limit(
+            "this is the kit's test bed, not your game: one character, one clip, input injected by "
+            "add_movement_input, no image"
+        )
         errors = []
         status = "succeeded"
         if report["failed_checks"]:
@@ -565,6 +864,7 @@ def run(ctx, request, builder):
         unreal.SystemLibrary.quit_editor()
 
     bed = Bed(ctx, request, builder, mesh, anim, instance)
+    bed.anim_name = anim_name
     bed.on_finished = publish
     bed.run()
     # The editor ticks from here. Waiting for it on this call is what would stop it ticking.

@@ -79,14 +79,14 @@ def test_unknown_operations_and_bad_parameters_are_refused():
 
 
 def test_the_catalogue_says_what_is_not_implemented_instead_of_hiding_it():
-    """The frame is what remains of lot 3: everything else has been proven."""
+    """What is left is the P2 lot, by name: packaging and retargeting."""
     unavailable = {name for name, spec in OPERATIONS.items() if not spec.available}
-    assert "game.screenshot" in unavailable
-    assert "game.package" in unavailable and "retarget.mannequin" in unavailable
+    assert unavailable == {"game.package", "retarget.mannequin"}
     assert OPERATIONS["asset.import"].available, "proven against the real engine by U05"
     assert OPERATIONS["asset.audit"].available, "proven against the real engine by U06"
     assert OPERATIONS["handoff.request"].available, "validated by fluidblend itself in U13"
     assert OPERATIONS["game.smoke_test"].available, "played in the real engine by U07, and failed on cue"
+    assert OPERATIONS["game.screenshot"].available, "rendered and looked at by U08, with its control"
     # Nothing claims a live mode: an open editor is a conflict, not a session to write into.
     assert all("live" not in spec.execution_contract()["modes"] for spec in OPERATIONS.values())
 

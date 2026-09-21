@@ -27,3 +27,6 @@ scripts/lot0/TestBed/
 
 # Lot 0 raw outputs are committed on purpose; their heavy by-products are not.
 docs/lot0/**/*.log.gz
+
+# Agent worktrees: another checkout of this repository, never content of it.
+.claude/worktrees/
