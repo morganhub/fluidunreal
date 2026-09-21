@@ -3,6 +3,14 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.3.3 — 2026-09-21 — lot 4 starts: what a human saw becomes a warning
+
+- The owner watched the reference walk and saw its arms held out. The bed had measured it all
+  along, the distance between the hands unchanged while the feet move 5 to 9 cm, and said nothing.
+  `game.smoke_test` now warns by name when a walk leaves the arms still, and U07 asserts it. It is a
+  limit of the clip, not of the import. The same look confirmed the audit: the walk moves forward
+  and snaps back each loop, so its in-place declaration is false.
+
 ## 0.3.2 — 2026-09-21 — lot 3: fourteen checks, one frame, someone else's project
 
 - **All fourteen checks of `game.smoke_test` are measured.** The bed stands, walks until the clip

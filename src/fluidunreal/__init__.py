@@ -8,4 +8,4 @@ when a fix belongs there, it writes a typed fluidblend request and hands over.
 from fluidblend.contracts.common import SCHEMA_VERSION
 
 __all__ = ["SCHEMA_VERSION", "__version__"]
-__version__ = "0.3.2"
+__version__ = "0.3.3"

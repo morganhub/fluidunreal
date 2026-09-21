@@ -645,6 +645,16 @@ class Bed:
                 "deforming can make it change. The hands are read too: this walk does not swing them",
             },
         )
+        hands = ranges.get("%s~%s" % PAIRS[1])
+        if feet is not None and hands is not None and feet > BONE_TRAVEL_CM and hands <= BONE_TRAVEL_CM:
+            # A human watching the reference walk saw "arms held out" before any number said so: the
+            # clip leaves the arms in the rest pose, which for this character is an A-pose. Not a
+            # failure of the import; a limit of the clip, said where it will be read.
+            self.builder.warn(
+                "the walk leaves the arms still: the hands keep their distance (%.2f cm of change) "
+                "while the feet move %.1f cm, so the arms hold the rest pose. Fix it in the clip, "
+                "where it was made" % (hands, feet)
+            )
 
     def pick_up(self, actor, component, step):
         """Attach the prop to the hand, the way a game's pickup would, and say where."""

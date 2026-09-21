@@ -35,3 +35,18 @@ importer adds, and now fails it at 57.5 cm.
 Next look: scrub `A_vitruvian_walk-baked` in the animation editor with the grid visible, and say
 whether the character stays over the origin (the audit is wrong) or walks away from it and pops
 back (the audit is right).
+
+## Second look, on the 0.3.2 demo
+
+The owner ran `scripts/demo.ps1` on `C:\Tafor\Projet\fluidunreal-demo-032`, opened the frame and
+the project, and played `A_vitruvian_walk-baked` in the animation editor.
+
+| Looked at | Seen | What it settles |
+| --- | --- | --- |
+| `ue-frame.png` | the character is visible | the frame draws the character |
+| the walk, looping | "a character that moves forward, arms held out, in a loop" | the clip travels and snaps back: the audit's failure of the in-place declaration is right. The arms do not swing: they hold the character's rest pose, an A-pose |
+
+The arms had been measured all along (the distance between the hands does not change while the
+feet move 5 to 9 cm) and reported by nobody. `game.smoke_test` now warns about it by name, and U07
+asserts the warning. It is a limit of the clip, not of the import: fluidblend's walk recipe says
+"no arm swing" in its own limits.

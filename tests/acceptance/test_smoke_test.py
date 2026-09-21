@@ -63,6 +63,8 @@ def test_U07_the_bed_plays_the_character_and_says_what_it_did(imported, project)
     assert looping["wraps"] >= 1 and looping["always_playing"] is True
     moves = checks["walk_clip_moves_bones"]["detail"]
     assert moves["distance_range_cm_by_pair"]["DEF-foot_L~DEF-foot_R"] > moves["threshold_cm"]
+    # Lot 4, first human review: the arms held out in their rest pose were seen, then measured.
+    assert any("leaves the arms still" in warning for warning in outcome.result.warnings)
     walked = checks["character_moves"]["detail"]
     assert walked["delta_x_cm"] > 10.0 and abs(walked["lateral_cm"]) <= 5.0
     # Nothing moved the character before the walk: the default pawn once threw it 2.7 m.

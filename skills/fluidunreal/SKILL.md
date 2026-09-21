@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.3.2", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.3.3", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
