@@ -17,7 +17,7 @@ import fluidunreal
 from fluidunreal.contracts.operations import OPERATIONS
 from fluidunreal.contracts.schema_export import check_up_to_date, export_all
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
-from fluidunreal.core.tasks import TaskRunner
+from fluidunreal.core.tasks import UNSETTLED, TaskRunner
 from fluidunreal.doctor import compare_lock, run_doctor, write_lock
 
 
@@ -26,6 +26,13 @@ def _print(data: object, as_json: bool) -> None:
         print(json.dumps(data, indent=2, ensure_ascii=False, default=str))
     else:
         print(data)
+
+
+def _refuse(message: str, as_json: bool, details: object = None) -> None:
+    if as_json:
+        _print({"error": message, "details": details}, True)
+    else:
+        print(f"error: {message}", file=sys.stderr)
 
 
 def cmd_ops(args: argparse.Namespace) -> int:
@@ -122,6 +129,23 @@ def cmd_run(args: argparse.Namespace) -> int:
     return outcome.exit_code
 
 
+def cmd_task(args: argparse.Namespace) -> int:
+    runner = TaskRunner(load_project(Path(args.project)))
+    action = {"status": runner.status, "cancel": runner.cancel, "reconcile": runner.reconcile}
+    try:
+        data = action[args.task_command](args.id)
+    except ProjectError as exc:
+        # The project loaded; only the task id is wrong. That is an invalid argument, not a block.
+        _refuse(str(exc), args.json)
+        return exit_codes.INVALID
+    _print(data, True)
+    # A cancel always leaves the task for reconcile, and a reconcile that could not conclude says
+    # so: both are an uncertain write state until reconcile has marked the task concluded.
+    if args.task_command in ("cancel", "reconcile") and data.get("status") in UNSETTLED:
+        return exit_codes.UNKNOWN_STATE
+    return exit_codes.OK
+
+
 def cmd_schema(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if args.action == "export":
@@ -187,6 +211,19 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("task", help="state, cancellation and reconciliation of a task")
+    task_sub = p.add_subparsers(dest="task_command", required=True)
+    for name, text in (
+        ("status", "what the task recorded, and whether its editor still runs"),
+        ("cancel", "kill the task's editor and leave the task for reconcile"),
+        ("reconcile", "conclude a task left unsettled: stop its editor, clean what it provably wrote"),
+    ):
+        tp = task_sub.add_parser(name, help=text)
+        tp.add_argument("--project", required=True)
+        tp.add_argument("--id", required=True, help="the task_id that `run` or `resume` printed")
+        tp.add_argument("--json", action="store_true", help="accepted for symmetry: the output is JSON")
+    p.set_defaults(func=cmd_task)
 
     p = sub.add_parser("schema", help="export or check the JSON Schemas")
     p.add_argument("action", choices=["export", "check"])

@@ -10,7 +10,10 @@ The engine backend lands in lot 2. Until then `_execute` refuses it by name rath
 
 from __future__ import annotations
 
+import os
+import re
 import shutil
+import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,6 +25,7 @@ from fluidblend.contracts.common import (
     OperationStatus,
     StrictModel,
 )
+from fluidblend.contracts.project import IDENT_PATTERN
 from fluidblend.contracts.tasks import TaskRecord, WorkerInfo
 from fluidblend.core import exit_codes
 from fluidblend.core.atomic import atomic_write_json, read_json
@@ -34,6 +38,7 @@ from pydantic import ValidationError
 
 from fluidunreal.adapters import unreal_batch, unreal_discovery
 from fluidunreal.contracts.operations import (
+    OPERATIONS,
     OperationRequest,
     OperationSpec,
     RequestValidationError,
@@ -43,14 +48,21 @@ from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
 from fluidunreal.core.permissions import operation_allowed
 from fluidunreal.core.project import (
     Project,
+    ProjectError,
     is_test_bed,
     kit_root,
     outside_changes,
     outside_content,
     user_project_problems,
 )
+from fluidunreal.core.ue_content import (
+    Leftovers,
+    remove_leftovers,
+    task_leftovers,
+    write_content_index,
+    write_runtime_manifest,
+)
 from fluidunreal.core.ue_content import next_version as ue_next_version
-from fluidunreal.core.ue_content import write_content_index, write_runtime_manifest
 from fluidunreal.hostops import HOST_HANDLERS, HostContext, HostOpError
 
 BLOCKED_EXIT = {
@@ -78,6 +90,15 @@ PUBLICATION = {
     "game.screenshot": "reviews/game",
     "handoff.request": "reviews/handoff",
 }
+
+# A task in one of these states may still be writing, or may have stopped half-way. It blocks a
+# retry of its operation_id until `task reconcile` has looked at what it left.
+UNSETTLED = (
+    OperationStatus.queued,
+    OperationStatus.running,
+    OperationStatus.validating,
+    OperationStatus.unknown,
+)
 
 
 class TaskAbort(Exception):
@@ -176,6 +197,238 @@ class TaskRunner:
                 TaskAbort(ErrorCode.VALIDATION_FAILED, str(exc), status=OperationStatus.failed),
             )
 
+    # --- Recovery -----------------------------------------------------------------------
+
+    def status(self, task_id: str) -> dict[str, Any]:
+        task = self._known_task(task_id)
+        info = task.model_dump(mode="json")
+        log = self._task_dir(task_id) / "unreal.log"
+        if log.is_file():
+            info["log_tail"] = unreal_batch.log_tail(log)
+        if task.worker:
+            info["worker_alive"] = unreal_batch.is_task_worker(task.worker.pid, task_id)
+        if task.status in UNSETTLED:
+            info["next_action"] = self._reconcile_command(task_id)
+        return info
+
+    def cancel(self, task_id: str) -> dict[str, Any]:
+        """Stop a task's editor and leave the task `unknown`, for reconcile to conclude.
+
+        A killed import may leave a staging folder or half a version behind. Marking the task
+        cancelled would let a retry start over that; `unknown` keeps the operation_id blocked until
+        reconcile has looked at what is there.
+        """
+        task = self._known_task(task_id)
+        if task.status not in UNSETTLED:
+            return {
+                "task_id": task_id,
+                "status": task.status,
+                "cancelled": False,
+                "reason": "task already finished",
+            }
+        worker = self._stop_worker(task)
+        task.status = OperationStatus.unknown
+        task.partial_effects = self._partial_effects(task_id)
+        self.state.upsert_task(task)
+        self.project.journal().append("task_cancelled", task_id=task_id, worker=worker)
+        return {
+            "task_id": task_id,
+            "status": task.status,
+            "cancelled": not worker["alive"],
+            "worker": worker,
+            "message": "the editor is still running: it could not be stopped"
+            if worker["alive"]
+            else "nothing of this task is running any more; what it left is for reconcile to judge",
+            "partial_effects": task.partial_effects,
+            "next_action": self._reconcile_command(task_id),
+        }
+
+    def reconcile(self, task_id: str) -> dict[str, Any]:
+        try:
+            with self.locks.hold("project", timeout=0, purpose=f"reconcile {task_id}"):
+                return self._reconcile_locked(task_id)
+        except LockBusy:
+            task = self._known_task(task_id)
+            return {
+                "task_id": task_id,
+                "status": task.status,
+                "action": "wait",
+                "reason": "another fluidunreal process holds the project lock: an operation is still running",
+                "next_action": f'`fluidunreal task cancel --project "{self.project.root}" --id {task_id}` '
+                "stops this task's editor; reconcile once that process has ended",
+            }
+
+    def _reconcile_locked(self, task_id: str) -> dict[str, Any]:
+        """Conclude a task that stopped without saying how, by looking at what it left."""
+        task = self._known_task(task_id)
+        report: dict[str, Any] = {"task_id": task_id, "previous_status": task.status}
+        if task.status not in UNSETTLED:
+            report.update({"status": task.status, "action": "none", "reason": "already concluded"})
+            return report
+
+        worker = self._stop_worker(task)
+        report["worker"] = worker
+        if worker["alive"]:
+            report.update(
+                {
+                    "status": task.status,
+                    "action": "wait",
+                    "reason": "this task's editor could not be stopped: nothing is removed while it may "
+                    "still be writing",
+                }
+            )
+            return report
+
+        leftovers, notes = self._leftovers(task)
+        removed, failed = remove_leftovers(self.project.content_root, leftovers.removable)
+        kept = [{"path": self._shown(path), "reason": reason} for path, reason in leftovers.kept]
+        published = [
+            entry["path"]
+            for entry in self.state.rebuild(save=False)["published"]
+            if entry.get("task_id") == task_id
+        ]
+        report.update(
+            {
+                "result_written_by_editor": (self._task_dir(task_id) / "result.json").is_file(),
+                "removed": [self._shown(path) for path in removed],
+                "kept": kept,
+                "published": published,
+                "notes": notes,
+            }
+        )
+        if failed:
+            # Something provably this task's is still there. Concluding now would orphan it: no
+            # later reconcile could attribute it to anyone.
+            report.update(
+                {
+                    "status": task.status,
+                    "action": "retry_reconcile",
+                    "failed": [{"path": self._shown(p), "error": e} for p, e in failed],
+                    "reason": "some of what this task left could not be removed; run reconcile again "
+                    "once nothing holds those files",
+                }
+            )
+            self.project.journal().append("reconcile_incomplete", **report)
+            return report
+
+        what = self._describe_reconcile(worker, report)
+        task.status = OperationStatus.failed
+        task.partial_effects = self._partial_effects(task_id) + [item["path"] for item in kept]
+        recovery = "run the same request again: the operation_id is free"
+        if published:
+            recovery = (
+                "this task published before it stopped: a retry under the same operation_id will be "
+                "refused at publication, so use a new one"
+            )
+        task.errors.append(
+            ErrorRecord(
+                code=ErrorCode.TIMEOUT_UNKNOWN_STATE,
+                message=f"reconciled after an interruption: {what}",
+                recovery=recovery,
+                details={k: report[k] for k in ("removed", "kept", "published", "notes")},
+            )
+        )
+        self.state.upsert_task(task)
+        report.update(
+            {"status": task.status, "action": "marked_failed", "summary": what, "next_action": recovery}
+        )
+        self.project.journal().append(
+            "reconciled", task_id=task_id, **{k: v for k, v in report.items() if k != "task_id"}
+        )
+        atomic_write_json(self._task_dir(task_id) / "reconcile.json", report)
+        return report
+
+    def _stop_worker(self, task: TaskRecord) -> dict[str, Any]:
+        """Kill this task's editor if it still runs. Identified by pid and marker, never by name."""
+        if task.worker is None:
+            return {"recorded": False, "alive": False, "killed": False}
+        pid = task.worker.pid
+        report: dict[str, Any] = {"recorded": True, "pid": pid, "alive": False, "killed": False}
+        if not unreal_batch.is_task_worker(pid, task.task_id):
+            return report
+        killed = unreal_batch.kill_worker(pid, task.task_id)
+        alive = unreal_batch.is_task_worker(pid, task.task_id)
+        deadline = time.monotonic() + unreal_batch.KILL_GRACE_SECONDS
+        # taskkill returns before the editor has let go of its files; removing them earlier fails.
+        while killed and alive and time.monotonic() < deadline:
+            time.sleep(1)
+            alive = unreal_batch.is_task_worker(pid, task.task_id)
+        report.update(
+            {
+                "alive": alive,
+                "killed": killed and not alive,
+                "children_left": unreal_batch.surviving_children(pid),
+            }
+        )
+        return report
+
+    def _leftovers(self, task: TaskRecord) -> tuple[Leftovers, list[str]]:
+        """What this task may have left under the content root, from what its envelope recorded."""
+        notes: list[str] = []
+        asset_id: str | None = None
+        version: int | None = None
+        spec = OPERATIONS.get(task.operation)
+        envelope_path = self._task_dir(task.task_id) / "request.json"
+        if spec is not None and spec.creates_version:
+            if not envelope_path.is_file():
+                notes.append("no envelope: the editor was never started, so no version folder is this task's")
+            else:
+                asset_id, version, note = self._envelope_version(envelope_path)
+                if note:
+                    notes.append(note)
+        return (
+            task_leftovers(
+                self.project.content_root, task_id=task.task_id, asset_id=asset_id, next_version=version
+            ),
+            notes,
+        )
+
+    def _envelope_version(self, path: Path) -> tuple[str | None, int | None, str | None]:
+        """The asset and version the runtime was told to create, resolved the way it resolves them."""
+        try:
+            envelope = read_json(path)
+            request = envelope["request"]
+            context = envelope["context"]
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return None, None, f"the envelope is unreadable ({exc}): no version folder is attributed"
+        parameters = request.get("parameters") or {}
+        instances = (context.get("bundle") or {}).get("instances") or [{}]
+        asset_id = parameters.get("asset_id") or (request.get("target") or {}).get("asset_id")
+        asset_id = asset_id or instances[0].get("asset_id")
+        version = context.get("next_version")
+        if not isinstance(asset_id, str) or not re.fullmatch(IDENT_PATTERN, asset_id):
+            return None, None, f"the envelope names no usable asset_id ({asset_id!r})"
+        if not isinstance(version, int) or version < 1:
+            return None, None, f"the envelope names no usable next_version ({version!r})"
+        destination = str(context.get("destination_root") or "/Game/Fluid")
+        on_disk = self.project.uproject.parent / "Content" / destination.removeprefix("/Game/")
+        if os.path.normcase(on_disk) != os.path.normcase(self.project.content_root):
+            return (
+                None,
+                None,
+                f"the task imported under {destination}, which is not the content root: nothing "
+                "there is attributed to it or removed",
+            )
+        return asset_id, version, None
+
+    def _describe_reconcile(self, worker: dict[str, Any], report: dict[str, Any]) -> str:
+        parts = []
+        if worker.get("killed"):
+            parts.append(f"its editor (pid {worker['pid']}) was still running and was killed")
+        elif worker.get("recorded"):
+            parts.append("its editor had already stopped")
+        else:
+            parts.append("no editor was recorded for it")
+        if report["result_written_by_editor"]:
+            parts.append("the editor had written a result the kit never verified")
+        if report["removed"]:
+            parts.append("removed " + ", ".join(report["removed"]))
+        else:
+            parts.append("nothing of it was found under the content root")
+        if report["kept"]:
+            parts.append(f"{len(report['kept'])} other item(s) reported and left alone")
+        return "; ".join(parts)
+
     # --- Steps --------------------------------------------------------------------------
 
     def _preflight(self, request: OperationRequest, spec: OperationSpec) -> None:
@@ -227,18 +480,13 @@ class TaskRunner:
             raise TaskAbort(
                 ErrorCode.TIMEOUT_UNKNOWN_STATE,
                 "the published result of that operation_id is gone",
-                recovery=f"fluidunreal task reconcile --id {entry['task_id']}",
+                recovery=self._reconcile_command(entry["task_id"]),
             )
-        if status in (
-            OperationStatus.running,
-            OperationStatus.validating,
-            OperationStatus.unknown,
-            OperationStatus.queued,
-        ):
+        if status in UNSETTLED:
             raise TaskAbort(
                 ErrorCode.TIMEOUT_UNKNOWN_STATE,
                 f"operation_id {request.operation_id} has a task in state {status}",
-                recovery=f"fluidunreal task reconcile --id {entry['task_id']} before any new attempt",
+                recovery=f"{self._reconcile_command(entry['task_id'])} before any new attempt",
                 details={"previous_task": entry["task_id"]},
             )
         return None
@@ -391,7 +639,7 @@ class TaskRunner:
                 ErrorCode.TIMEOUT_UNKNOWN_STATE,
                 "the editor wrote no result"
                 + (f" and was killed after {outcome.elapsed_s}s" if outcome.timed_out else ""),
-                recovery=f"fluidunreal task reconcile --project . --id {task.task_id}",
+                recovery=self._reconcile_command(task.task_id),
                 details={
                     "exit_code": outcome.exit_code,
                     "timed_out": outcome.timed_out,
@@ -438,7 +686,14 @@ class TaskRunner:
         if request.target.bundle_id:
             bundle_dir = self.project.bundle_dir(request.target.bundle_id)
             bundle = read_json(bundle_dir / "handoff-bundle.json")
-            asset_id = request.target.asset_id or (bundle.get("instances") or [{}])[0].get("asset_id")
+            # The runtime's order: parameters, then target, then the first instance. The version it
+            # creates has to be the one this number was computed for, or reconcile cannot tell
+            # which folder was this task's.
+            asset_id = (
+                getattr(params, "asset_id", None)
+                or request.target.asset_id
+                or (bundle.get("instances") or [{}])[0].get("asset_id")
+            )
             if asset_id:
                 next_version = ue_next_version(self.project.asset_dir(asset_id))
         return {
@@ -637,6 +892,27 @@ class TaskRunner:
 
     def _task_dir(self, task_id: str) -> Path:
         return self.project.root / "state" / "tasks" / task_id
+
+    def _known_task(self, task_id: str) -> TaskRecord:
+        task = self.state.task(task_id)
+        if task is None:
+            raise ProjectError(f"unknown task: {task_id}")
+        return task
+
+    def _reconcile_command(self, task_id: str) -> str:
+        return f'fluidunreal task reconcile --project "{self.project.root}" --id {task_id}'
+
+    def _partial_effects(self, task_id: str) -> list[str]:
+        out_dir = self._task_dir(task_id) / "out"
+        if not out_dir.exists():
+            return []
+        return sorted(relpath_posix(self.project.root, p) for p in out_dir.rglob("*") if p.is_file())[:200]
+
+    def _shown(self, path: Path) -> str:
+        """Project-relative when it can be; an existing Unreal project lives outside the root."""
+        if path.is_relative_to(self.project.root):
+            return relpath_posix(self.project.root, path)
+        return str(path)
 
     def _fingerprint(self, request: OperationRequest) -> str:
         return fingerprint(

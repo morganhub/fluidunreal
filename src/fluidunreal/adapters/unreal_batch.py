@@ -118,14 +118,23 @@ def worker_command_line(pid: int) -> str:
     return (done.stdout or "").strip()
 
 
+def is_task_worker(pid: int, task_id: str) -> bool:
+    """True only when that pid is alive, is an editor, and carries this task's marker.
+
+    A pid alone is not an identity: Windows recycles them, and the process that owns a recorded pid
+    an hour later may be someone's open editor.
+    """
+    line = worker_command_line(pid).lower()
+    return "unrealeditor" in line and f"{TASK_MARKER}{task_id}".lower() in line
+
+
 def kill_worker(pid: int, task_id: str) -> bool:
     """Kill only a process that is really this task's editor, and its children with it.
 
     The marker check is what makes this safe: without it, a recycled pid would take down whatever
     now owns it. `taskkill /T` takes the ShaderCompileWorker children too.
     """
-    line = worker_command_line(pid).lower()
-    if "unrealeditor" not in line or f"{TASK_MARKER}{task_id}".lower() not in line:
+    if not is_task_worker(pid, task_id):
         return False
     try:
         subprocess.run(  # noqa: S603 - argument list
