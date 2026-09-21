@@ -22,7 +22,7 @@ from fluidblend.contracts.common import (
     OperationStatus,
     StrictModel,
 )
-from fluidblend.contracts.tasks import TaskRecord
+from fluidblend.contracts.tasks import TaskRecord, WorkerInfo
 from fluidblend.core import exit_codes
 from fluidblend.core.atomic import atomic_write_json, read_json
 from fluidblend.core.hashing import fingerprint, new_id, now_iso, sha256_file
@@ -30,15 +30,20 @@ from fluidblend.core.locks import LockBusy, ProjectLocks
 from fluidblend.core.paths import PathRejected, relpath_posix
 from fluidblend.core.revisions import RevisionStore
 from fluidblend.core.state import StateStore
+from pydantic import ValidationError
 
+from fluidunreal.adapters import unreal_batch, unreal_discovery
 from fluidunreal.contracts.operations import (
     OperationRequest,
     OperationSpec,
     RequestValidationError,
     validate_request,
 )
+from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
 from fluidunreal.core.permissions import operation_allowed
-from fluidunreal.core.project import Project
+from fluidunreal.core.project import Project, kit_root
+from fluidunreal.core.ue_content import next_version as ue_next_version
+from fluidunreal.core.ue_content import write_content_index, write_runtime_manifest
 from fluidunreal.hostops import HOST_HANDLERS, HostContext, HostOpError
 
 BLOCKED_EXIT = {
@@ -54,6 +59,8 @@ BLOCKED_EXIT = {
 
 # Where each operation's outputs end up. A destination that already holds something is a conflict,
 # never an overwrite.
+RUNTIME_VERSION = "0.2.0"
+
 PUBLICATION = {
     "bundle.accept": "reviews/bundles",
     "bundle.wrap": "reviews/bundles",
@@ -265,12 +272,8 @@ class TaskRunner:
     ) -> OperationResult:
         task_dir = self._task_dir(task.task_id)
         out_dir = task_dir / "out"
-        if spec.backend != "host":
-            raise TaskAbort(
-                ErrorCode.UNSUPPORTED_CAPABILITY,
-                f"{spec.name} needs the Unreal editor, which this lot does not drive yet",
-                recovery="the engine backend is lot 2; `ops --all` says so",
-            )
+        if spec.backend == "unreal":
+            return self._execute_unreal(request, params, spec, task, task_dir, out_dir)
         handler = HOST_HANDLERS.get(spec.name)
         if handler is None:
             raise TaskAbort(ErrorCode.UNSUPPORTED_CAPABILITY, f"no host handler for {spec.name}")
@@ -295,6 +298,150 @@ class TaskRunner:
                 [ErrorRecord(code=exc.code, message=str(exc), recovery=exc.recovery, details=exc.details)],
             )
         return ctx.result()
+
+    def _execute_unreal(
+        self,
+        request: OperationRequest,
+        params: StrictModel,
+        spec: OperationSpec,
+        task: TaskRecord,
+        task_dir: Path,
+        out_dir: Path,
+    ) -> OperationResult:
+        """One dedicated editor, one operation. Never the session someone has open."""
+        editor, notes = unreal_discovery.select(self.project.local.unreal_editor_executable)
+        if editor is None:
+            raise TaskAbort(
+                ErrorCode.MISSING_DEPENDENCY,
+                f"no Unreal Engine {LOCKED_UNREAL_SERIES} on this machine",
+                recovery="`fluidunreal doctor --project .` says what was found",
+                details={"notes": notes},
+            )
+        uproject = self.project.uproject
+        if not uproject.is_file():
+            raise TaskAbort(
+                ErrorCode.VALIDATION_FAILED,
+                f"the project points at a .uproject that does not exist: {uproject}",
+                status=OperationStatus.failed,
+            )
+        open_editor = unreal_batch.gui_editor_on(uproject)
+        if open_editor:
+            raise TaskAbort(
+                ErrorCode.SCENE_CONFLICT,
+                "an Unreal editor is already open on this project",
+                recovery="close it first; the kit never closes, saves or reloads it for you",
+                details={"process": open_editor[:400]},
+            )
+
+        kit = kit_root()
+        manifest = write_runtime_manifest(kit / "unreal_runtime")
+        envelope = self._envelope(request, params, spec, task, out_dir, manifest)
+        self.project.journal().append(
+            "unreal_worker_started",
+            task_id=task.task_id,
+            operation=spec.name,
+            editor=editor.path,
+            engine=editor.version,
+            runtime_hash=manifest["hash"],
+        )
+
+        def remember(info: dict[str, Any]) -> None:
+            task.worker = WorkerInfo(**info)
+            self.state.upsert_task(task)
+
+        with self.locks.hold("unreal-instance", purpose=f"{spec.name} {request.operation_id}"):
+            outcome = unreal_batch.run_operation(
+                editor=Path(editor.path),
+                uproject=uproject,
+                kit_root=kit,
+                task_dir=task_dir,
+                envelope=envelope,
+                task_id=task.task_id,
+                timeout_s=int(self.project.manifest.budgets.max_task_minutes * 60),
+                render=spec.op_class == "render",
+                on_worker_started=remember,
+            )
+
+        if outcome.result is None:
+            # The editor left no result: what it wrote is unknown, and calling that a failure
+            # would be a guess in the direction that loses work.
+            raise TaskAbort(
+                ErrorCode.TIMEOUT_UNKNOWN_STATE,
+                "the editor wrote no result"
+                + (f" and was killed after {outcome.elapsed_s}s" if outcome.timed_out else ""),
+                recovery=f"fluidunreal task reconcile --project . --id {task.task_id}",
+                details={
+                    "exit_code": outcome.exit_code,
+                    "timed_out": outcome.timed_out,
+                    "log_tail": unreal_batch.log_tail(outcome.log_path),
+                },
+                status=OperationStatus.unknown,
+            )
+        try:
+            result = OperationResult.model_validate(outcome.result)
+        except ValidationError as exc:
+            raise TaskAbort(
+                ErrorCode.VALIDATION_FAILED,
+                f"the editor wrote a result the engine cannot read: {exc}",
+                status=OperationStatus.failed,
+            ) from exc
+        result.metrics.setdefault("unreal_elapsed_s", outcome.elapsed_s)
+        result.metrics.setdefault("unreal_exit_code", outcome.exit_code)
+        if result.status != OperationStatus.succeeded and not result.errors:
+            result.errors.append(
+                ErrorRecord(
+                    code=ErrorCode.INTERNAL_ERROR,
+                    message="the editor reported a failure without saying why",
+                    details={"log_tail": unreal_batch.log_tail(outcome.log_path)},
+                )
+            )
+        return result
+
+    def _envelope(
+        self,
+        request: OperationRequest,
+        params: StrictModel,
+        spec: OperationSpec,
+        task: TaskRecord,
+        out_dir: Path,
+        manifest: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Everything the runtime may touch. It opens no path that is not in here."""
+        bundle_dir = None
+        bundle: dict[str, Any] = {}
+        next_version = 1
+        if request.target.bundle_id:
+            bundle_dir = self.project.bundle_dir(request.target.bundle_id)
+            bundle = read_json(bundle_dir / "handoff-bundle.json")
+            asset_id = request.target.asset_id or (bundle.get("instances") or [{}])[0].get("asset_id")
+            if asset_id:
+                next_version = ue_next_version(self.project.asset_dir(asset_id))
+        return {
+            "schema_version": "1.0",
+            "task_id": task.task_id,
+            "runtime_version": RUNTIME_VERSION,
+            "runtime_hash": manifest["hash"],
+            "request": {
+                "operation": spec.name,
+                "operation_id": request.operation_id,
+                "project_id": request.project_id,
+                "target": request.target.model_dump(exclude_none=True),
+                "parameters": params.model_dump(mode="json"),
+            },
+            "context": {
+                "project_root": str(self.project.root),
+                "task_dir": str(self._task_dir(task.task_id)),
+                "out_dir": str(out_dir),
+                "engine_series": self.project.manifest.ue.engine_series,
+                "bundle_dir": str(bundle_dir) if bundle_dir else None,
+                "bundle": bundle,
+                "destination_root": getattr(params, "destination_root", "/Game/Fluid"),
+                "content_root": str(self.project.content_root),
+                "next_version": next_version,
+                "budgets": self.project.manifest.budgets.model_dump(),
+                "test_hooks": self.test_hooks,
+            },
+        }
 
     def _verify_artifacts(self, task: TaskRecord, result: OperationResult) -> None:
         """An artifact that is not there, or no longer hashes to what was recorded, is not evidence."""
@@ -343,8 +490,51 @@ class TaskRunner:
                 path=artifact.path,
                 sha256=artifact.sha256,
             )
+        if spec.creates_version:
+            result = self._record_asset_version(request, task, result)
         result.next_safe_actions.append(
             f"read {relpath_posix(self.project.root, base)} for what this run proved"
+        )
+        return result
+
+    def _record_asset_version(
+        self, request: OperationRequest, task: TaskRecord, result: OperationResult
+    ) -> OperationResult:
+        """Make the published content a revision the kit can check against later.
+
+        `RevisionStore` records one file per target, which is right for a .blend and wrong for a
+        folder of .uasset. So the version writes an index of every file it holds with its hash, and
+        the revision points at that: external change detection then works unchanged, and a .uasset
+        edited by hand in the editor is caught the next time the kit looks.
+        """
+        asset_id = result.metrics.get("asset_id") or request.target.asset_id
+        version = result.metrics.get("version")
+        if not asset_id or not version:
+            result.warnings.append("no asset version was recorded: the run reported neither")
+            return result
+        version_dir = self.project.asset_dir(str(asset_id)) / f"v{int(version):03d}"
+        if not version_dir.is_dir():
+            raise TaskAbort(
+                ErrorCode.INTERNAL_ERROR,
+                f"the editor reported {version_dir} but nothing is there",
+                status=OperationStatus.failed,
+            )
+        index = write_content_index(
+            version_dir,
+            asset_id=str(asset_id),
+            version=int(version),
+            bundle_id=str(request.target.bundle_id or ""),
+        )
+        record = self.revisions.record(f"asset:{asset_id}", index, origin="kit")
+        result.new_revision = record.revision
+        result.metrics["content_index"] = relpath_posix(self.project.root, index)
+        self.project.journal().append(
+            "asset_version_published",
+            task_id=task.task_id,
+            asset_id=str(asset_id),
+            version=int(version),
+            revision=record.revision,
+            sha256=record.sha256,
         )
         return result
 

@@ -271,7 +271,6 @@ OPERATIONS: dict[str, OperationSpec] = {
             "write",
             "P0",
             "Import a bundle into the Unreal project and publish it as a new version",
-            available=False,
             requires_bundle=True,
             creates_version=True,
         ),

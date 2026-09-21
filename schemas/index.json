@@ -21,7 +21,9 @@
     "asset.import": {
       "cli_command": null,
       "input_paths": [],
-      "modes": [],
+      "modes": [
+        "batch"
+      ],
       "optional_dependencies": [],
       "publication": "asset_revision_and_reports",
       "required_dependencies": [

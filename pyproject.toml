@@ -61,3 +61,6 @@ ignore = ["E501"]
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S"]
 "scripts/lot0/**" = ["S", "B", "E", "F", "UP"]
+# The runtime runs on the Python the editor embeds, which is 3.11. Percent formatting is
+# deliberate: the rewrite ruff proposes can produce quote nesting that only parses on 3.12+.
+"unreal_runtime/**" = ["UP031", "UP032"]

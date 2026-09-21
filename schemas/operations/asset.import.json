@@ -33,12 +33,14 @@
   "title": "AssetImportParams",
   "type": "object",
   "x-fluidunreal": {
-    "available": false,
+    "available": true,
     "backend": "unreal",
     "cli_command": null,
     "input_paths": [],
     "lot": "P0",
-    "modes": [],
+    "modes": [
+      "batch"
+    ],
     "op_class": "write",
     "optional_dependencies": [],
     "publication": "asset_revision_and_reports",
