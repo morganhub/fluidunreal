@@ -4,8 +4,8 @@
 
 .DESCRIPTION
   Runs the real chain against the real engine: accept the reference bundle, import it as a version,
-  audit what the engine wrote, play it in the kit's test bed. Then prints the .uproject to open and
-  what to look at inside it.
+  audit what the engine wrote, play it in the kit's test bed, render one frame. Then prints the
+  .uproject to open, the frame to look at, and what to look at inside the project.
 
   Nothing here is a shortcut: it is the same CLI, the same requests, the same checks. If a step
   refuses, it refuses here too, with its reason.
@@ -54,13 +54,15 @@ $source = ($bundle -replace '\\', '/')
         target = @{ bundle_id = 'fx-export-unreal'; asset_id = 'vitruvian' }; parameters = @{} }
     'game-smoke'    = @{ operation = 'game.smoke_test'; operation_id = 'smoke-vitruvian-001'
         target = @{ bundle_id = 'fx-export-unreal'; asset_id = 'vitruvian' }; parameters = @{} }
+    'game-frame'    = @{ operation = 'game.screenshot'; operation_id = 'frame-vitruvian-001'
+        target = @{ bundle_id = 'fx-export-unreal'; asset_id = 'vitruvian' }; parameters = @{} }
 }.GetEnumerator() | ForEach-Object {
     $payload = @{ schema_version = '1.0'; project_id = 'demo-game'; dry_run = $false } + $_.Value
     $payload | ConvertTo-Json -Depth 6 |
         Set-Content -Path (Join-Path $requests "$($_.Key).json") -Encoding utf8
 }
 
-foreach ($step in @('bundle-accept', 'asset-import', 'asset-audit', 'game-smoke')) {
+foreach ($step in @('bundle-accept', 'asset-import', 'asset-audit', 'game-smoke', 'game-frame')) {
     Write-Host "== $step ==" -ForegroundColor Cyan
     Invoke-Kit @('run', '--project', $Path, '--operation', (Join-Path $requests "$step.json"))
 }
@@ -80,5 +82,8 @@ Write-Host "  $Path\reviews\assets\audit-vitruvian-001\audit-report.json"
 Write-Host "  $Path\imports\import-vitruvian-001\import-report.json"
 Write-Host "  $Path\reviews\game\smoke-vitruvian-001\smoke-report.json"
 Write-Host ''
+Write-Host 'Look at this frame before believing any number about it:' -ForegroundColor Green
+Write-Host "  $Path\reviews\game\frame-vitruvian-001\ue-frame.png"
+Write-Host ''
 Write-Host 'The audit fails the walk on purpose: it is declared in place and travels 0.58 m per loop.' -ForegroundColor Yellow
-Write-Host 'The test bed is not your game and draws nothing: the kit never claims it works in a game.' -ForegroundColor Yellow
+Write-Host 'The test bed is not your game: the kit never claims the character works in a game.' -ForegroundColor Yellow

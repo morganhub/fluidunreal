@@ -65,6 +65,9 @@ the case that proves the audit can catch a false declaration. A correct travelli
 by re-declaring it as the walk it was made from (`root_bone`, 0.6 m, the recipe's default stride),
 and passes.
 
+U14 does not use this fixture: it runs the same recipe with `--build-only`, which builds a fresh
+studio with the fluidblend checkout it finds and prints the bundle it published.
+
 ### Regenerating it
 
 ```powershell

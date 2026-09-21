@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.3.1", lot: "lot 3 (test bed)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.3.2", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -21,11 +21,12 @@ validates, journals, locks, versions and produces evidence. No improvised Python
 **Task completion criterion**: the assets exist in the project, the audit measurements were taken,
 and the limits are stated. Exit code 0 on its own proves nothing.
 
-**Status: lot 3, partly.** Against Unreal Engine 5.8.2: accept a bundle, import it as a version,
-measure what the engine wrote, play it headless in the kit's test bed (`game.smoke_test`), and
-hand a fix back to fluidblend. `game.screenshot` is not built. **The test bed is not a game and
-draws nothing: do not say it works in the game.** A smoke test that passes and an audit that fails
-can both be true: read both.
+**Status: lot 3, complete.** Against Unreal Engine 5.8.2: accept a bundle, import it as a
+version, measure what the engine wrote, play it in the kit's test bed (`game.smoke_test`), render
+one frame of it (`game.screenshot`), and hand a fix back to fluidblend. **The test bed is not a
+game: do not say it works in the game.** The frame is the only visual evidence: open
+`ue-frame.png` and say you looked at it before any judgement. A smoke test that passes and an audit
+that fails can both be true: read both.
 
 ## Calling the CLI
 

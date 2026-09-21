@@ -32,7 +32,23 @@ here or in your project.
 
 The other way is `--ue-project <absolute path to a .uproject>`, for a project you already have. It
 must be a real path: a symlink or a junction would let a write escape the root that was recorded.
-The kit then writes under `Content/Fluid/**` and refuses everything else under `Content/`.
+The kit then writes under `Content/Fluid/**` and nowhere else.
+
+Before every engine operation, and before a task exists, the kit checks that project and refuses
+with the reason (exit 3) when:
+
+- its `EngineAssociation` names another series than the locked one;
+- `PythonScriptPlugin` is not enabled. The line to add is given; the kit never edits your
+  `.uproject`;
+- `Content/Fluid` is a link;
+- anything under `Content/Fluid` was not written by the kit: a file no `FLUID_CONTENT.json` lists,
+  or a staging folder left by an interrupted import (`task reconcile` removes it).
+
+While the editor runs, files outside `Content/Fluid` and the engine's working folders are compared
+before and after, by size and time, and any change is a warning in the result, by name. The kit
+writes nothing there; the engine sometimes does: it added `Config/DefaultInput.ini` to a project
+that had none. The test bed builds in a blank map that is never saved, and the frame's temporary
+files under `Saved/` are removed.
 
 The template is pinned. A modified test bed is not the one lot 0 proved anything about, so a hash
 mismatch is reported and the run refuses; it is never repaired behind your back.

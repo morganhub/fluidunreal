@@ -1,6 +1,6 @@
 [project]
 name = "fluidunreal"
-version = "0.3.1"
+version = "0.3.2"
 description = "Local Unreal Engine 5 import kit drivable by an AI: pluggable skill, tested Python engine, measured evidence."
 readme = "README.md"
 license = "MIT"

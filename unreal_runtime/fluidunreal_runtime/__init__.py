@@ -15,7 +15,7 @@ from fluidunreal_runtime.envelope import Context, load_envelope
 from fluidunreal_runtime.errors import OpError
 from fluidunreal_runtime.report import ResultBuilder, write_json_atomic
 
-RUNTIME_VERSION = "0.3.1"
+RUNTIME_VERSION = "0.3.2"
 
 # A handler returns this when it finishes on the editor's tick rather than on this call. Waiting
 # for it here would be the very thing that breaks: a blocking wait stops the editor ticking, so

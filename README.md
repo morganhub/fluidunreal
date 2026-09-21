@@ -6,19 +6,20 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 3, partly.** Against Unreal Engine 5.8.2: diagnose the machine and lock the series,
-create a project, accept a hand-off bundle, wrap a third-party GLB, import a bundle as a version,
-measure what the engine wrote, and hand a fix back to fluidblend as a request that kit accepts.
+Status: **lot 3, complete.** Against Unreal Engine 5.8.2: diagnose the machine and lock the
+series, create a project or adopt one you have, accept a hand-off bundle, wrap a third-party GLB,
+import a bundle as a version, measure what the engine wrote, play it in a headless test bed, render
+one frame of it, hand a fix back to fluidblend, and recover a run that was interrupted.
 
-The test bed plays the imported character headless: the clip advances, the legs deform, the
-character walks into the wall. Ten of its fourteen checks are measured and pass; four are not built
-yet, and say so. `game.screenshot` is not built.
+The test bed stands the character on the floor, walks it until its clip loops, has it pick up a
+prop and stop: fourteen checks, all measured. The frame shows it from the side, and the same frame
+without it is the control.
 
 The audit fails the reference walk, and is right to: the clip is declared in place and carries the
 whole body forward 0.58 m per loop. Lot 0 had passed it by reading a joint the importer invents.
 The defect is on the fluidblend side, where every baked clip is declared in place.
 
-Acceptance scenarios U01 to U07 and U13 pass. Lot 0's five feasibility proofs are recorded in
+Acceptance scenarios U01 to U14 pass, U14 being the whole loop through both kits. Lot 0's five feasibility proofs are recorded in
 [docs/lot0/](docs/lot0/), with their findings in
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
@@ -28,7 +29,8 @@ Acceptance scenarios U01 to U07 and U13 pass. Lot 0's five feasibility proofs ar
 pwsh -File scripts/demo.ps1 -Path "C:\Projects\fluidunreal-demo"
 ```
 
-It accepts the reference bundle, imports it, audits it, and prints the `.uproject` to open. Inside,
+It accepts the reference bundle, imports it, audits it, plays it, shoots one frame, and prints
+the `.uproject` to open and the frame to look at. Inside,
 `Content/Fluid/vitruvian/v001/` holds `SK_vitruvian`, `SKEL_vitruvian` and
 `A_vitruvian_walk-baked`. The measurements are in `reviews/assets/*/audit-report.json`, readable
 without opening the editor at all. Scrub the walk in the animation editor and watch the character

@@ -3,7 +3,41 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
-## Unreleased
+## 0.3.2 — 2026-09-21 — lot 3: fourteen checks, one frame, someone else's project
+
+- **All fourteen checks of `game.smoke_test` are measured.** The bed stands, walks until the clip
+  has looped, and stands again. `idle_plays_nothing` reads the clip assigned and the feet holding
+  still (`is_playing` is true with no clip at all on 5.8.2, so it is reported and not used);
+  `back_to_idle` stops the clip once the character stands; the prop is attached to the right hand
+  before the capsule meets it, and `holds_prop` requires the hand to have carried it.
+- **Looking at a frame exposed four defects of the bed that fourteen green checks had not.** The
+  mesh stood 88 cm above the floor while `stands_on_floor` measured the capsule, and it faced +Y, so
+  the character walked sideways. `new_level` saved `SmokeBed.umap` into the project and, on the next
+  run, built the bed in whatever map was open. Without a PlayerStart, PIE spawned its default pawn
+  inside the character's capsule and threw it 2.7 m before any input, which `character_moves`
+  counted as walking. The bed now builds in a blank map that is never saved, starts the default
+  pawn behind the camera, lowers and turns the mesh by the facing it measures on the skeleton, reads
+  the feet for `stands_on_floor`, and fails a walk that drifts more than 5 cm sideways.
+- **`game.screenshot` is available.** One frame of the bed from the side, then the same frame
+  without the character. Both go through a `SceneCapture2D` in the PIE world with fixed exposure:
+  the second `take_high_res_screenshot` had rendered the editor's world, and reported a green
+  27.7 %. A difference box wider than 60 % of the frame, or a share over 40 %, is refused. Without a
+  GPU the answer is `MISSING_DEPENDENCY`. U08 passes at 2.1 %; with the character hidden from both
+  frames the share is 0 and the run fails, which is its control.
+- **An Unreal project you already have** (`init --ue-project`). Before a task exists, the kit checks
+  the engine series, that `PythonScriptPlugin` is enabled (it gives the line to add and never edits
+  a `.uproject`), that `Content/Fluid` is not a link, and that nothing under it was written by
+  anyone else. Around every engine run, files outside `Content/Fluid` and the engine's working
+  folders are compared by size and time and any change is reported by name: the engine added
+  `Config/DefaultInput.ini` to a project that had none. A real run imports, plays and shoots into a
+  copy of someone else's project and finds their files untouched.
+- **U12**: the real editor killed mid-import, through a test-only pause after the staging is on
+  disk. Exit 5, retry refused, `task reconcile` removes the staging and publishes nothing, and the
+  retry imports `v001`.
+- **U14**: fluidblend bakes and exports, this kit accepts, imports, audits (technical pass: the
+  bundle from fluidblend 0.6.1 declares the walk as the 0.6 m walk it is), plays and shoots; the
+  `reexport_unreal` request runs in fluidblend as written and its bundle is accepted.
+  `make_fixture_bundle.py --build-only` builds that studio without touching the fixture.
 
 - **`fluidunreal task status|cancel|reconcile --project <p> --id <task_id>`.** The skill and the
   recovery messages named these, and none of them existed. `reconcile` takes the project

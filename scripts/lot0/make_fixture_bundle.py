@@ -12,6 +12,8 @@ trusted. Run it from the fluidblend checkout's environment:
 Options:
     --work <dir>   where to build the scratch project (default: a temp folder, kept on success)
     --force        replace an existing fixture folder
+    --build-only   build the studio and publish its bundle, leave the fixture alone, and print
+                   `FLUIDBLEND_BUNDLE=<path>` last. U14 drives fluidblend this way.
 """
 
 from __future__ import annotations
@@ -120,7 +122,17 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--work", type=Path, default=None)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--build-only", action="store_true")
     args = parser.parse_args()
+
+    if args.build_only:
+        work = args.work or Path(tempfile.mkdtemp(prefix="fluidunreal-studio-"))
+        root = work / "studio"
+        scaffold_project(root, profile="game", project_id="demo-studio", game_engine="unreal")
+        bundle_path = run_chain(load_project(root))
+        print("FLUIDBLEND_STUDIO=" + str(root))
+        print("FLUIDBLEND_BUNDLE=" + str(bundle_path))
+        return 0
 
     if FIXTURE.exists() and not args.force:
         raise SystemExit(f"{FIXTURE} already exists (pass --force to replace it)")
