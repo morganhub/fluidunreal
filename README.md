@@ -6,12 +6,15 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 2.** Against Unreal Engine 5.8.2: diagnose the machine and lock the series, create a
-project with its own test bed, accept a hand-off bundle, wrap a third-party GLB into one, import a
-bundle into the project as a version, and measure what the engine wrote. Playing it and drawing it
-are lot 3, and the catalogue says so.
+Status: **lot 3, partly.** Against Unreal Engine 5.8.2: diagnose the machine and lock the series,
+create a project, accept a hand-off bundle, wrap a third-party GLB, import a bundle as a version,
+measure what the engine wrote, and hand a fix back to fluidblend as a request that kit accepts.
 
-Acceptance scenarios U01 to U06 pass. Lot 0's five feasibility proofs are recorded in
+The test bed is built and runs. Nine of its ten measurable checks pass; the tenth reads 0.0 cm of
+bone travel, because the clip does not advance on the Play-In-Editor component. It is held back
+rather than shipped as passing, and `docs/compatibility-matrix.md` says why.
+
+Acceptance scenarios U01 to U06 and U13 pass. Lot 0's five feasibility proofs are recorded in
 [docs/lot0/](docs/lot0/), with their findings in
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 

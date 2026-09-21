@@ -3,6 +3,30 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.3.0 — 2026-09-21 — the hand-off closes the loop; the test bed is held back
+
+- **`handoff.request`.** When the import or the audit shows something that belongs in Blender, the
+  kit writes a complete fluidblend request and prints the exact command, rather than touching a
+  source it does not own. The catalogue of templates is closed, and every request is validated with
+  fluidblend's own `validate_request` before it is written: what is handed over is something that
+  kit accepts, not something this one believes it should. U13 covers all four templates.
+- **`game.smoke_test` is built, runs, and stays unavailable.** Nine of its ten measurable checks
+  pass against the real 5.8.2: the world loads, the character spawns in the PIE world with the
+  bundle's 188 bones, rests on the floor, walks 326 cm, is stopped by the wall, and passes within a
+  centimetre of the prop.
+
+  The tenth reads exactly 0.0 cm of bone travel over fifteen consecutive samples while the
+  character stands still. `play_animation` returns successfully on the PIE component and the clip
+  does not advance. **Lot 0 reported that check as passing and was wrong**: its measuring window
+  overlapped the window in which the character was walking, so it measured the actor translating
+  rather than the skeleton deforming. `walk_plays_looping` is `not_run` for the same reason, since
+  a successful API call is not playback.
+
+  An operation that cannot pass is not shipped as available. `docs/compatibility-matrix.md` and the
+  test-bed reference say so.
+- The runtime gained an explicit deferred path: an operation that finishes on the editor's tick
+  says so, instead of a handler blocking on a wait that stops the ticking it waits for.
+
 ## 0.2.0 — 2026-09-21 — lot 2, import and audit
 
 The engine backend, proven against Unreal Engine 5.8.2. U05 and U06 pass.

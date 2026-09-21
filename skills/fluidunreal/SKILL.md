@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.2.0", lot: "lot 2 (import and audit)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.3.0", lot: "lot 3 (hand-off)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -21,11 +21,11 @@ validates, journals, locks, versions and produces evidence. No improvised Python
 **Task completion criterion**: the assets exist in the project, the audit measurements were taken,
 and the limits are stated. Exit code 0 on its own proves nothing.
 
-**Status: lot 2.** Import and audit work against Unreal Engine 5.8.2: accept a bundle, import it
-into the project as a version, and measure what the engine wrote. `game.smoke_test`,
-`game.screenshot` and `handoff.request` answer `UNSUPPORTED_CAPABILITY` and name the lot they land
-in. Run `fluidunreal ops --all --json` rather than guessing. **Nothing here has been seen playing
-or drawn yet: that is lot 3.**
+**Status: lot 3, partly.** Against Unreal Engine 5.8.2: accept a bundle, import it as a version,
+measure what the engine wrote, and hand a fix back to fluidblend. `game.smoke_test` is built and
+nine of its ten measurable checks pass, but the clip does not advance on the PIE component, so it
+stays `UNSUPPORTED_CAPABILITY` rather than shipping a test that cannot pass. `game.screenshot` is
+not built. **Nothing has been seen playing or drawn: do not say it works in the game.**
 
 ## Calling the CLI
 
