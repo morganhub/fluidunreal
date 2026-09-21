@@ -60,6 +60,7 @@ Levels: `proven` (output read and kept) · `not_run` (the tool or the step was m
 | Gravity, movement and collision | `proven` | P3. The capsule rests on the floor, walks from x=0 to x=355.9 under `add_movement_input(..., force=True)`, and is stopped by the wall at x=400. Without `force=True` the input is dropped and nothing moves |
 | The clip really deforms the skeleton in PIE | `proven` | P3. A named deform bone moves between ticks 30 and 45. Reading bone index 1 on tick 1 gives an empty name: the mesh is not up yet |
 | The capsule rests slightly above the floor | `proven` | P3. Bottom at 2.15 cm for a half height of 88: the movement component parks it there, so the tolerance is 3 cm and the reason is written down |
+| The clip advances on the PIE component | **`not_run`, and lot 0 was wrong about it** | The kit's bed reads exactly 0.0 cm of bone travel over fifteen samples: `play_animation` succeeds on the PIE component but the clip does not advance. P3 reported this as passing because its measuring window overlapped the window in which the character was walking, so it measured the actor translating rather than the skeleton deforming. `game.smoke_test` stays unavailable until this is solved |
 | 14 checks written to JSON before the editor quits | `proven`, partly | P3: **10 measured and passed, 0 failed, 4 not measured by this bed** (idle state and prop attachment). A check that was not measured is listed, never counted as a pass |
 | Fallback: Functional Test Blueprint via `Automation RunTests` | `excluded` | Not needed: P3 passed |
 

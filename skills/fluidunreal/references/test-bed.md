@@ -1,8 +1,10 @@
 # Test bed and frame
 
-**Not available yet.** `game.smoke_test` and `game.screenshot` are lot 3. They answer
-`UNSUPPORTED_CAPABILITY`. What follows is what lot 0 proved on the real engine, which is what they
-will be built from.
+**Not available yet.** `game.smoke_test` is built and runs, and it is held back on purpose:
+nine of its ten measurable checks pass, and the tenth reads exactly 0.0 cm of bone travel. An
+operation that cannot pass is not shipped as available.
+
+`game.screenshot` is not built. Both answer `UNSUPPORTED_CAPABILITY`.
 
 Examples: [request-game-smoke-test.json](../assets/request-game-smoke-test.json),
 [request-game-screenshot.json](../assets/request-game-screenshot.json).
@@ -31,6 +33,21 @@ Four things had to be right, and each was wrong first:
 
 Measured afterwards: the capsule rests 2.15 cm above the floor because the movement component parks
 it there, so the tolerance is 3 cm and the reason is written down rather than the number fudged.
+
+## The check that does not pass, and what it taught
+
+`walk_clip_moves_bones` reads a named deform bone over fifteen consecutive ticks while the
+character stands still. It reads **0.0 cm**: `play_animation` returns successfully on the PIE
+component, and the clip does not advance.
+
+Lot 0 reported this check as passing. It was wrong. Its measuring window overlapped the window in
+which the character was walking, so what it measured was the actor translating across the floor,
+not the skeleton deforming. Moving the movement window later exposed it, and a single pair of
+samples became a window of fifteen, which is why the zero is trustworthy.
+
+Nine checks pass: the world loads, the character spawns in the PIE world with the bundle's 188
+bones, it rests on the floor, it walks 326 cm, the wall stops it, and it passes within a centimetre
+of the prop. That is worth having. It is not worth calling a passing smoke test.
 
 ## The fourteen checks
 

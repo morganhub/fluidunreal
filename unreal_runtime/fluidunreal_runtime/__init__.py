@@ -15,15 +15,24 @@ from fluidunreal_runtime.envelope import Context, load_envelope
 from fluidunreal_runtime.errors import OpError
 from fluidunreal_runtime.report import ResultBuilder, write_json_atomic
 
-RUNTIME_VERSION = "0.2.0"
+RUNTIME_VERSION = "0.3.0"
+
+# A handler returns this when it finishes on the editor's tick rather than on this call. Waiting
+# for it here would be the very thing that breaks: a blocking wait stops the editor ticking, so
+# nothing it was waiting for ever happens. The handler writes the result and quits itself.
+DEFERRED = "deferred"
 SUPPORTED_UNREAL_SERIES = "5.8"
 
 
 def _handlers():
     """Imported lazily so a broken handler cannot stop the result from being written."""
-    from fluidunreal_runtime import audit, importer
+    from fluidunreal_runtime import audit, importer, testbed
 
-    return {"asset.import": importer.run, "asset.audit": audit.run}
+    return {
+        "asset.import": importer.run,
+        "asset.audit": audit.run,
+        "game.smoke_test": testbed.run,
+    }
 
 
 def _check_engine(ctx):
@@ -71,7 +80,9 @@ def run_envelope(envelope):
                 "UNSUPPORTED_CAPABILITY",
                 "this runtime does not implement %s" % request["operation"],
             )
-        handler(ctx, request, builder)
+        outcome = handler(ctx, request, builder)
+        if outcome is DEFERRED:
+            return DEFERRED
         return builder.result()
     except OpError as error:
         return builder.result(
@@ -99,6 +110,10 @@ def main(envelope_path):
         envelope = load_envelope(envelope_path)
         result = run_envelope(envelope)
         destination = os.path.join(envelope["context"]["task_dir"], "result.json")
+        if result is DEFERRED:
+            # The handler is driving the editor and will write the result and quit itself.
+            unreal.log("fluidunreal: %s runs on the tick" % envelope["request"]["operation"])
+            return
     except BaseException as error:  # noqa: BLE001
         unreal.log_error("fluidunreal: the envelope could not be read: %s" % error)
         unreal.SystemLibrary.quit_editor()
