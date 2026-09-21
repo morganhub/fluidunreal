@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-21 12:43 UTC",
+  "generated_at": "2026-09-21 13:37 UTC",
   "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
   "scenarios": [
     {
       "scenario": "U01",
       "test": "tests/unit/test_doctor.py::test_U01_doctor_reports_what_it_saw",
       "status": "passed",
-      "duration_s": 0.14,
+      "duration_s": 0.19,
       "detail": "",
       "title": "Diagnose the machine and lock the engine series",
       "notes": []
@@ -15,7 +15,7 @@
       "scenario": "U02",
       "test": "tests/unit/test_scaffold_and_cli.py::test_U02_init_is_idempotent_and_keeps_manual_edits",
       "status": "passed",
-      "duration_s": 0.09,
+      "duration_s": 0.13,
       "detail": "",
       "title": "Initialize a project, and re-run the initialization",
       "notes": []
@@ -24,7 +24,7 @@
       "scenario": "U03",
       "test": "tests/unit/test_bundles.py::test_U03_accept_verifies_everything_it_claims",
       "status": "passed",
-      "duration_s": 0.18,
+      "duration_s": 0.21,
       "detail": "",
       "title": "Accept a bundle published by fluidblend",
       "notes": []
@@ -42,29 +42,40 @@
       "scenario": "U05",
       "test": "tests/acceptance/test_asset_import.py::test_U05_import_publishes_a_version_it_checked_first",
       "status": "passed",
-      "duration_s": 25.63,
+      "duration_s": 26.19,
       "detail": "",
       "title": "Import a bundle into Unreal and publish it as a version",
       "notes": [
-        "188 deform bones, one animation, published as v001 in 24.92s; the importer's proxy root and its extra assets are reported, not claimed away"
+        "188 deform bones, one animation, published as v001 in 25.47s; the importer's proxy root and its extra assets are reported, not claimed away"
       ]
     },
     {
       "scenario": "U06",
       "test": "tests/acceptance/test_asset_audit.py::test_U06_the_audit_measures_rather_than_assumes",
       "status": "passed",
-      "duration_s": 41.31,
+      "duration_s": 35.78,
       "detail": "",
       "title": "Audit the imported asset: scale, axes, length, root motion",
       "notes": [
-        "five reference bones within a millimetre, 188 deform bones, 47 frames against 48, root travel 0.0 cm with a control bone at 57.5 cm"
+        "five reference bones within a millimetre, 188 deform bones, 47 frames against 48; the walk declared in place travels 57.5 cm over 75 top bones, and the audit fails it for that"
+      ]
+    },
+    {
+      "scenario": "U07",
+      "test": "tests/acceptance/test_smoke_test.py::test_U07_the_bed_plays_the_character_and_says_what_it_did_not_measure",
+      "status": "passed",
+      "duration_s": 19.34,
+      "detail": "",
+      "title": "Play the character headless in the test bed and report 14 checks",
+      "notes": [
+        "10 checks measured and passed, 4 not measured by this bed; the distance between the feet changes by 6.0 cm with the actor still"
       ]
     },
     {
       "scenario": "U13",
       "test": "tests/unit/test_handoff.py::test_U13_every_template_builds_a_request_fluidblend_accepts[look_at_glb]",
       "status": "passed",
-      "duration_s": 0.07,
+      "duration_s": 0.08,
       "detail": "",
       "title": "Hand a fix back to fluidblend as a request it accepts",
       "notes": [

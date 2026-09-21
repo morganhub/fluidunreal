@@ -10,24 +10,29 @@ Status: **lot 3, partly.** Against Unreal Engine 5.8.2: diagnose the machine and
 create a project, accept a hand-off bundle, wrap a third-party GLB, import a bundle as a version,
 measure what the engine wrote, and hand a fix back to fluidblend as a request that kit accepts.
 
-The test bed is built and runs. Nine of its ten measurable checks pass; the tenth reads 0.0 cm of
-bone travel, because the clip does not advance on the Play-In-Editor component. It is held back
-rather than shipped as passing, and `docs/compatibility-matrix.md` says why.
+The test bed plays the imported character headless: the clip advances, the legs deform, the
+character walks into the wall. Ten of its fourteen checks are measured and pass; four are not built
+yet, and say so. `game.screenshot` is not built.
 
-Acceptance scenarios U01 to U06 and U13 pass. Lot 0's five feasibility proofs are recorded in
+The audit fails the reference walk, and is right to: the clip is declared in place and carries the
+whole body forward 0.58 m per loop. Lot 0 had passed it by reading a joint the importer invents.
+The defect is on the fluidblend side, where every baked clip is declared in place.
+
+Acceptance scenarios U01 to U07 and U13 pass. Lot 0's five feasibility proofs are recorded in
 [docs/lot0/](docs/lot0/), with their findings in
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
 ## See it yourself
 
 ```powershell
-pwsh -File scripts/demo.ps1 -Path "C:\Projectsluidunreal-demo"
+pwsh -File scripts/demo.ps1 -Path "C:\Projects\fluidunreal-demo"
 ```
 
 It accepts the reference bundle, imports it, audits it, and prints the `.uproject` to open. Inside,
 `Content/Fluid/vitruvian/v001/` holds `SK_vitruvian`, `SKEL_vitruvian` and
 `A_vitruvian_walk-baked`. The measurements are in `reviews/assets/*/audit-report.json`, readable
-without opening the editor at all.
+without opening the editor at all. Scrub the walk in the animation editor and watch the character
+leave its origin and snap back when the clip loops: that is the travel the audit reports.
 
 ## What works today
 

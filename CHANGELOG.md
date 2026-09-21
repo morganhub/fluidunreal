@@ -3,6 +3,31 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.3.1 — 2026-09-21 — the test bed plays, and the audit stops passing a false claim
+
+- **`asset.audit` passed a false in-place claim, and now fails it.** It read root motion on bone 0,
+  which is `<node>_ProxyTrueRootJoint`, a joint the importer adds and no clip animates: 0.0 cm, pass.
+  Its control, a thigh at 57.5 cm, was taken for a swing; a thigh's head goes where the pelvis goes,
+  so the 57.5 cm was the travel. Root motion is now read on every bone hanging from the proxy (75 on
+  the reference fixture), as the median of their horizontal travel, with the largest excursion
+  within the clip as the control on the reader. The reference walk, declared in place, fails at
+  57.5 cm. Read from the GLB without Unreal, it travels 0.59 m: the audit is right. Declared as the
+  0.6 m walk it was made from, the same clip passes; declared as 0.5 m, it fails. A declared stride
+  is now scaled to the span actually read (46 frames of 48: one frame short of a loop, and one
+  frame Unreal does not sample), or a correct walk fails by 2.5 cm. **Breaking**:
+  `audit-report.json` loses `root_bone` and gains `root_motion_read_on`.
+- **The defect is on the fluidblend side.** fluidblend 0.6.0's `animation.bake` writes its manifest
+  without a `root_motion`, so every baked clip reaches the bundle as `in_place`, whatever it does.
+- **`game.smoke_test` is available.** The clip does play in headless PIE: the 0.0 cm was the bed's
+  reader, a local translation that a bone which only rotates keeps constant. `walk_plays_looping`
+  now reads the player's position and `is_playing`; `walk_clip_moves_bones` reads the distance
+  between the two feet while the actor stands still, which no displacement of the whole body can
+  change. U07: 10 checks measured and passed, 4 not measured. Negative control: with a `clip_id`
+  that does not exist, the bed runs without a clip and fails three checks by name. A failed run's
+  report path is in the error's recovery, since a failed run publishes nothing.
+- `scripts/demo.ps1` runs the smoke test too. The first human review, and what it did not see, are
+  in `docs/reviews/`. Probe P6 (playback in PIE) is kept in `scripts/lot0/`.
+
 ## 0.3.0 — 2026-09-21 — the hand-off closes the loop; the test bed is held back
 
 - **`handoff.request`.** When the import or the audit shows something that belongs in Blender, the

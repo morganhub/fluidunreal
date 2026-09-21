@@ -59,7 +59,7 @@ BLOCKED_EXIT = {
 
 # Where each operation's outputs end up. A destination that already holds something is a conflict,
 # never an overwrite.
-RUNTIME_VERSION = "0.3.0"
+RUNTIME_VERSION = "0.3.1"
 
 PUBLICATION = {
     "bundle.accept": "reviews/bundles",

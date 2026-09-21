@@ -12,8 +12,9 @@ produces a claim nobody can check.
 - **Technical evidence is not artistic approval.** A measurement that comes back green, or exactly
   zero, is checked against a render and a negative control before it is believed. Measure, then
   look. Lot 0 produced two examples: a 69 % coverage that turned out to compare two different
-  scenes, and a root travel of exactly 0 cm that only means something because the same call on a
-  moving bone returns 57.5 cm.
+  scenes, and a root travel of exactly 0 cm read on a joint the importer invents. Its control, a
+  thigh at 57.5 cm, was read as a swing when it was the travel itself: a control only helps if what
+  it should read is known before it is read.
 - **A measurement that could not be taken is `not_run`**, listed, and never counted as a pass.
 - **An interface gets tested by a human.** Every defect found becomes an assertion.
 - The kit installs nothing globally, never writes `config/permissions.json`, builds every external

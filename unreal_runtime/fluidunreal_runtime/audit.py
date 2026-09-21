@@ -7,8 +7,8 @@ What lot 0 settled, and what this file therefore does:
 
 - bone names lose their dots on import, so every lookup maps `.` to `_`;
 - `get_bone_location` does not exist on this series, so bones are read as sockets;
-- the root is bone 0 of the skeleton, not the first animation track. Reading the track gave a thigh
-  that swings 57.5 cm in a walk, which would have called an in-place clip a travelling one.
+- root motion is read on the bones that carry the body, never on bone 0 alone. See `_body_bones`:
+  bone 0 is a joint the importer invents, and reading it passed an in-place claim that was false.
 
 The scale check was proven real by a negative control: falsifying the reference pose by ten
 centimetres fails all five bones. The audit re-runs that logic, it does not re-assert the result.
@@ -126,7 +126,7 @@ def _scale_and_axis(component, bones, instance, builder):
     return rows, axis
 
 
-def _animations(content_path, ctx, instance, root_bone, builder):
+def _animations(content_path, ctx, instance, body, builder):
     rows = []
     clips = ctx.clips_for(instance["instance_id"])
     fps = ctx.bundle.get("fps") or {"numerator": 24, "denominator": 1}
@@ -155,99 +155,155 @@ def _animations(content_path, ctx, instance, root_bone, builder):
                 detail={"fps": rate, "clip_id": (clip or {}).get("clip_id")},
             )
         )
-        rows.append(_root_motion(sequence, clip, name, root_bone, builder))
+        rows.extend(_root_motion(sequence, clip, name, frames, declared, body, builder))
     return rows
 
 
-def _root_bone(component, bones):
-    """Bone 0, not the first animation track. Lot 0 read a thigh and would have believed it."""
-    if bones:
-        return bones[0]
-    try:
-        return str(component.get_bone_name(0))
-    except Exception:  # noqa: BLE001
-        return None
+def _body_bones(component, bones):
+    """The bones that carry the body through space: the top of what the bundle exported.
+
+    Lot 0 read bone 0 and called it the root. On this series bone 0 is the joint the importer adds,
+    `<node>_ProxyTrueRootJoint`, which no clip animates. It read 0.0 cm on a walk whose every bone
+    travels 0.59 m, and the audit passed an in-place claim that was false. The "control" meant to
+    catch a wrong bone did not: its thigh read 57.5 cm, taken for a swing, and that 57.5 cm was the
+    travel itself. A deform-only export has no single root bone at all. The reference fixture's 188
+    bones hang from the proxy in 75 separate chains, and the travel is carried by every one of them.
+
+    So: every bone whose parent is the proxy. Without a proxy, bone 0 is a real root and is used.
+    """
+    added = [name for name in bones if name.lower().endswith(PROXY_SUFFIX)]
+    if not added:
+        return (bones[:1], None, None) if bones else ([], None, "the skeleton has no bones")
+    proxy = added[0]
+    top = []
+    for name in bones:
+        if name == proxy:
+            continue
+        try:
+            parent = str(component.get_parent_bone(name))
+        except Exception as error:  # noqa: BLE001
+            return [], proxy, "the parent of %s is unreadable: %s" % (name, error)
+        if parent == proxy:
+            top.append(name)
+    if not top:
+        return [], proxy, "no bone hangs from %s" % proxy
+    return top, proxy, None
 
 
-def _travel(sequence, bone, frames, builder):
-    positions = []
-    for frame in (0, max(int(frames) - 1, 0)):
+def _horizontal(sequence, bone, frames, builder):
+    """Component-space position of a top bone at each frame, in centimetres, X and Y only.
+
+    A top bone's parent is the proxy, which sits at the origin, so its local translation is its
+    position in the component. That is only true of top bones, which is why only they are read.
+    """
+    points = []
+    for frame in frames:
         try:
             transform = unreal.AnimationLibrary.get_bone_pose_for_frame(sequence, bone, frame, True)
-            positions.append(transform.translation)
         except Exception as error:  # noqa: BLE001
             builder.warn("the pose of %s at frame %d is unreadable: %s" % (bone, frame, error))
             return None
-    delta = positions[-1] - positions[0]
-    return float((delta.x**2 + delta.y**2) ** 0.5)
+        points.append((float(transform.translation.x), float(transform.translation.y)))
+    return points
 
 
-def _root_motion(sequence, clip, name, root_bone, builder):
-    """`root_bone` is bone 0 of the skeleton, handed in. Never the first animation track.
+def _distance(a, b):
+    return ((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) ** 0.5
 
-    Lot 0 read that track and got a thigh swinging 57.5 cm, which would have reported an in-place
-    clip as travelling half a metre. The control measurement below is what exposes that mistake:
-    if the root and the control read the same number, the root is not the root.
+
+def _root_motion(sequence, clip, name, frames, declared_frames, body, builder):
+    """How far the body travels between the first and the last frame, and a control on the reader.
+
+    Travel is the median over the top bones: a clip moves them together, and one odd chain cannot
+    swing the result. The control is the largest excursion of any top bone from its first-frame
+    position anywhere in the clip. A walk always has some; a reader that returns constants has none,
+    and then a travel of zero means nothing.
+
+    A declared stride covers the whole clip; the travel is read from its first frame to its last,
+    which is one frame short of a loop, and Unreal samples one frame fewer than the bundle declares.
+    So the stride is scaled to the span actually read: on the reference walk, 46 frames of 48.
+    Comparing the full stride instead fails a correct 0.6 m walk by 2.5 cm.
     """
-    if clip is None or root_bone is None:
-        return _measurement("root_motion_travel", name, space="component", passed=None)
-    bone = root_bone
-    try:
-        frames = int(sequence.get_editor_property("number_of_sampled_frames"))
-    except Exception as error:  # noqa: BLE001
-        builder.warn("the root motion of %s could not be measured: %s" % (name, error))
-        return _measurement("root_motion_travel", name, space="component", passed=None)
+    bones, proxy, problem = body
+    if clip is None or frames is None or not bones:
+        builder.limit("root motion of %s is not_run: %s" % (name, problem or "no clip or no frame count"))
+        return [_measurement("root_motion_travel", name, space="component", passed=None)]
+    last = max(int(frames) - 1, 0)
+    sampled = sorted({last * k // 4 for k in range(5)})
+    travels, excursion = [], 0.0
+    for bone in bones:
+        points = _horizontal(sequence, bone, sampled, builder)
+        if points is None:
+            continue
+        travels.append((_distance(points[0], points[-1]), bone))
+        excursion = max(excursion, max(_distance(points[0], p) for p in points))
+    if not travels:
+        builder.limit("root motion of %s is not_run: no top bone could be read" % name)
+        return [_measurement("root_motion_travel", name, space="component", passed=None)]
+    travels.sort()
+    observed = travels[len(travels) // 2][0]
+    reader_moves = excursion > IN_PLACE_LIMIT_CM
+    control = _measurement(
+        "root_motion_travel",
+        "control: %s" % name,
+        space="component",
+        observed=round(excursion, 3),
+        passed=reader_moves,
+        detail={
+            "why": "largest excursion of a top bone within the clip; a reader that returns "
+            "constants reads zero here, and then no travel below means anything",
+            "frames": sampled,
+        },
+    )
 
+    declared = clip.get("root_motion")
     stride = clip.get("stride_m")
     repetitions = clip.get("repetitions") or 1
-    in_place = clip.get("root_motion") == "in_place"
-    observed = _travel(sequence, bone, frames, builder)
-    if in_place:
-        expected = 0.0
-        passed = None if observed is None else observed < IN_PLACE_LIMIT_CM
-        tolerance = IN_PLACE_LIMIT_CM
+    detail = {
+        "declared": declared,
+        "read_on": "median of %d bones hanging from %s" % (len(travels), proxy) if proxy else travels[0][1],
+        "least_cm": [travels[0][1], round(travels[0][0], 3)],
+        "most_cm": [travels[-1][1], round(travels[-1][0], 3)],
+        "frames": [sampled[0], sampled[-1]],
+    }
+    if declared == "in_place":
+        expected, tolerance = 0.0, IN_PLACE_LIMIT_CM
+        passed = observed < IN_PLACE_LIMIT_CM
+        if not passed:
+            detail["why"] = (
+                "declared in place, but the whole body travels: played on a Character it slides "
+                "ahead of its capsule and snaps back every loop"
+            )
     elif stride is None:
-        return _measurement(
-            "root_motion_travel",
-            name,
-            space="component",
-            passed=None,
-            detail={"why": "the bundle declares no stride to compare against"},
-        )
+        detail["why"] = "the bundle declares no stride to compare against"
+        return [
+            _measurement(
+                "root_motion_travel", name, space="component", observed=round(observed, 3), detail=detail
+            ),
+            control,
+        ]
     else:
-        expected = float(stride) * int(repetitions) * CM_PER_M
-        passed = None if observed is None else abs(observed - expected) <= TRAVEL_TOLERANCE_CM
+        span = float(last) / declared_frames if declared_frames else 1.0
+        expected = float(stride) * int(repetitions) * CM_PER_M * span
+        detail["span_of_clip_read"] = "%d of %d frames" % (last, declared_frames or last)
         tolerance = TRAVEL_TOLERANCE_CM
-    return _measurement(
+        passed = abs(observed - expected) <= TRAVEL_TOLERANCE_CM
+    travel = _measurement(
         "root_motion_travel",
         name,
         space="component",
         expected=round(expected, 3),
-        observed=None if observed is None else round(observed, 3),
+        observed=round(observed, 3),
         tolerance=tolerance,
-        passed=passed,
-        detail={"bone": bone, "declared": clip.get("root_motion")},
+        passed=passed if reader_moves else None,
+        detail=detail,
     )
-
-
-def _control(sequence, bones, builder):
-    """A bone that must move, read the same way. Without it a root travel of zero proves nothing."""
-    moving = [name for name in bones if "thigh" in name.lower()]
-    if not sequence or not moving:
-        return None
-    try:
-        frames = int(sequence.get_editor_property("number_of_sampled_frames"))
-    except Exception:  # noqa: BLE001
-        return None
-    travel = _travel(sequence, moving[0], frames, builder)
-    return _measurement(
-        "root_motion_travel",
-        "control: %s" % moving[0],
-        space="component",
-        observed=None if travel is None else round(travel, 3),
-        passed=None if travel is None else travel > 1.0,
-        detail={"why": "the same call on a bone that must move; without it a zero proves nothing"},
-    )
+    if not reader_moves:
+        builder.limit(
+            "root motion of %s is not_run: no top bone moves at all within the clip, so a travel "
+            "of %.3f cm proves nothing about the reader" % (name, observed)
+        )
+    return [travel, control]
 
 
 def run(ctx, request, builder):
@@ -289,36 +345,17 @@ def run(ctx, request, builder):
                 detail={"added_by_importer": added},
             )
         )
-        root = _root_bone(component, bones)
+        body = _body_bones(component, bones)
     finally:
         actor.destroy_actor()
 
-    rows.extend(_animations(content_path, ctx, instance, root, builder))
-    sequences = _find(content_path, "AnimSequence", builder)
-    control = _control(sequences[0][1] if sequences else None, bones, builder)
-    if control is not None:
-        rows.append(control)
-        for row in rows:
-            if (
-                row["kind"] == "root_motion_travel"
-                and not row["name"].startswith("control:")
-                and row["observed"] is not None
-                and control["observed"] is not None
-                and abs(row["observed"] - control["observed"]) < 0.001
-            ):
-                row["passed"] = None
-                row["detail"]["why"] = (
-                    "the root and the moving control read the same travel: the bone being read is "
-                    "not the root, so this measures nothing"
-                )
-                builder.limit(
-                    "root motion is not_run for %s: it read the same travel as the control bone" % row["name"]
-                )
-    elif any(r["kind"] == "root_motion_travel" and r["observed"] == 0 for r in rows):
-        builder.limit(
-            "a root travel of zero was measured with no moving bone to check the reader against: "
-            "it is reported, not believed"
-        )
+    rows.extend(_animations(content_path, ctx, instance, body, builder))
+    for row in rows:
+        if row["kind"] == "root_motion_travel" and row["passed"] is False and "why" in row["detail"]:
+            builder.next_safe_actions.append(
+                "%s: %s. The declaration comes from the bundle; fix it where the clip is made"
+                % (row["name"], row["detail"]["why"])
+            )
 
     if parameters.get("render_reference_poses"):
         builder.limit("reference pose images need a GPU and a render pass: not_run in this lot")
@@ -330,7 +367,7 @@ def run(ctx, request, builder):
         "asset_id": asset_id,
         "engine": unreal.SystemLibrary.get_engine_version(),
         "content_path": content_path,
-        "root_bone": root,
+        "root_motion_read_on": body[0][:3] + (["..."] if len(body[0]) > 3 else []),
         "measurements": rows,
         "images": [],
         "limits": list(builder.limits),

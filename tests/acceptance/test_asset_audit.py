@@ -71,25 +71,55 @@ def test_U06_the_audit_measures_rather_than_assumes(audited, project):
     assert length["observed"] == 47 and length["expected"] == 48
     assert length["passed"] is True, "one frame of glTF sampling, inside the tolerance"
 
-    # The root is bone 0, and the control bone is what makes its zero mean something.
-    travel = next(
-        m
-        for m in report["measurements"]
-        if m["kind"] == "root_motion_travel" and not m["name"].startswith("control:")
-    )
-    control = next(m for m in report["measurements"] if m["name"].startswith("control:"))
-    assert report["root_bone"].lower().endswith("proxytruerootjoint")
-    assert travel["detail"]["bone"] == report["root_bone"]
-    assert travel["observed"] == pytest.approx(0.0, abs=0.01) and travel["passed"] is True
-    assert control["observed"] > 1.0, "a bone that must move, read the same way"
+    # The reference walk is declared in place and travels: the audit says so, on the bones that
+    # carry the body. Lot 0 read the importer's proxy joint, got 0.0 cm, and passed it.
+    travel = by_name[("root_motion_travel", "A_vitruvian_walk-baked")]
+    control = by_name[("root_motion_travel", "control: A_vitruvian_walk-baked")]
+    assert travel["detail"]["declared"] == "in_place"
+    assert "ProxyTrueRootJoint" in travel["detail"]["read_on"] and "75 bones" in travel["detail"]["read_on"]
+    assert report["root_motion_read_on"][0] != "CustomRig_Vitruvian_ProxyTrueRootJoint"
+    assert travel["observed"] == pytest.approx(57.5, abs=1.5) and travel["passed"] is False
+    assert "slides ahead of its capsule" in travel["detail"]["why"]
+    assert control["passed"] is True and control["observed"] > 1.0, "the reader reads moving data"
 
-    assert outcome.result.metrics["technical_pass"] is True
+    assert outcome.result.metrics["technical_pass"] is False, "a false declaration is a real defect"
     assert outcome.result.metrics["not_run"] == []
+    assert any("declared in place" in action for action in outcome.result.next_safe_actions)
     note(
         "U06",
-        "five reference bones within a millimetre, 188 deform bones, 47 frames against 48, root "
-        "travel 0.0 cm with a control bone at 57.5 cm",
+        "five reference bones within a millimetre, 188 deform bones, 47 frames against 48; the walk "
+        "declared in place travels 57.5 cm over 75 top bones, and the audit fails it for that",
     )
+
+
+def test_a_clip_declared_with_its_real_travel_passes(audited, project):
+    """The positive control: the same clip, declared as the walk it was made from, passes.
+
+    Without it, a root motion check that fails could be a check that always fails. The stride is
+    the recipe's, not the number observed: fluidblend's walk defaults to amplitude 0.3, and its
+    stride per cycle is twice that. Read over 46 frames of 48, 0.6 m is 57.5 cm.
+    """
+    imported(audited)
+    manifest = project.bundle_dir("fx-export-unreal") / "handoff-bundle.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["clips"][0].update({"root_motion": "root_bone", "stride_m": 0.6})
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+
+    outcome = audit(audited, "aud-travel")
+    assert outcome.exit_code == exit_codes.OK, outcome.result.model_dump()
+    _report, by_name = rows(project, "aud-travel")
+    travel = by_name[("root_motion_travel", "A_vitruvian_walk-baked")]
+    assert travel["detail"]["span_of_clip_read"] == "46 of 48 frames"
+    assert travel["expected"] == pytest.approx(57.5) and travel["passed"] is True
+    assert outcome.result.metrics["technical_pass"] is True
+
+    # And a stride that is wrong by more than the tolerance fails: 0.5 m is 47.9 cm over that span.
+    data["clips"][0]["stride_m"] = 0.5
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    wrong = audit(audited, "aud-short")
+    _report, by_name = rows(project, "aud-short")
+    assert by_name[("root_motion_travel", "A_vitruvian_walk-baked")]["passed"] is False
+    assert wrong.result.metrics["technical_pass"] is False
 
 
 def test_a_falsified_reference_pose_fails_every_scale_check(audited, project):

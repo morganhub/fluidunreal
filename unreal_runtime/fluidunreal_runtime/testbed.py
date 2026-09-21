@@ -14,12 +14,14 @@ Four things lot 0 had to get right, each of which was wrong first and looked fin
 The report is written **before** the editor is asked to quit. A run that writes no report proves
 nothing, and the engine treats a missing one as an unknown state rather than a failure.
 
-**Known failure, unsolved.** `walk_clip_moves_bones` reads exactly 0.0 cm of bone travel over
-fifteen samples: `play_animation` returns successfully on the PIE component, but the clip does not
-advance. Lot 0 reported this check as passing, and it was wrong: its measuring window overlapped
-the window in which the character was walking, so it measured the actor translating rather than the
-skeleton deforming. Moving the window exposed it. Until this is solved, `game.smoke_test` stays
-unavailable rather than shipping a test that cannot pass.
+**What `walk_clip_moves_bones` got wrong, three times.** Lot 0 passed it by measuring the actor
+translating: its window overlapped the walk. The next version read a big toe's offset from the
+reference pose, a local translation that stays constant for a bone that only rotates, and read
+0.0 cm, which looked like a clip that does not play. It does play (probe P6). The next read positions
+relative to the actor and found every bone, spine and forehead included, moving the same 10 cm in
+0.34 s: that was the clip carrying the whole body forward at 30 cm/s. The reference walk is declared
+in place and travels 0.58 m per loop; the audit now fails it for that. The check reads the distance
+between the two feet, which no displacement of the whole body can change.
 """
 
 import os
@@ -38,7 +40,16 @@ PROP_X = 200.0
 # The movement component parks the capsule slightly above the floor. Measured at 2.15 cm on 5.8.2,
 # so the tolerance is 3 cm and the reason is written down rather than the number fudged.
 FLOOR_TOLERANCE_CM = 3.0
-TOTAL_TICKS = 180
+TOTAL_TICKS = 210
+# Stand still, then walk. The still window is where deformation can be told from translation.
+STILL_FROM = 40
+STILL_UNTIL = 80
+WALK_UNTIL = 195
+# How much the distance between the feet must change while the actor stands still.
+BONE_TRAVEL_CM = 1.0
+# First steps of the window are skipped: the pose may still be the reference one.
+SETTLE_STEPS = 5
+PAIRS = (("DEF-foot_L", "DEF-foot_R"), ("DEF-hand_L", "DEF-hand_R"))
 # The PIE world takes a few ticks to exist; beyond this it never will.
 READY_DEADLINE_TICKS = 120
 PROXY_SUFFIX = "proxytruerootjoint"
@@ -139,6 +150,12 @@ class Bed:
         self.on_finished = None
         self.ready_tick = 0
         self.bone_travel = 0.0
+        self.bones = []
+        self.first_positions = {}
+        self.travel = {}
+        self.first_playback = (None, None)
+        self.still_origin = None
+        self.spans = {}
         self.tick_options = []
 
     # --- reporting ----------------------------------------------------------------------
@@ -208,7 +225,8 @@ class Bed:
             raise OpError("INTERNAL_ERROR", "no setter for the skeletal mesh on this series")
         component.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
         force_pose_ticking(component, self.builder)
-        play_single_animation(component, self.anim, self.builder)
+        if self.anim is not None:
+            play_single_animation(component, self.anim, self.builder)
 
     def resolve(self):
         """The actor that simulates lives in the PIE world; the editor one is a statue."""
@@ -244,20 +262,41 @@ class Bed:
             self.note("PIE anim instance: %s" % (chosen.mesh.get_anim_instance() is not None))
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the PIE animation mode is unreadable: %s" % error)
-        self.play_via = play_single_animation(chosen.mesh, self.anim, self.builder)
+        if self.anim is not None:
+            self.play_via = play_single_animation(chosen.mesh, self.anim, self.builder)
         return chosen
 
-    def probe_bone(self, component):
+    def candidate_bones(self, component):
+        """Every reference bone the skeleton has, plus the feet and the hands.
+
+        Each one's travel is reported, because a body that drifts inside its capsule shows there.
+        The check itself is on the pairs in `PAIRS`.
+        """
         wanted = [r["bone"].replace(".", "_") for r in self.instance.get("reference_pose") or []]
+        wanted += ["DEF-foot_L", "DEF-foot_R", "DEF-hand_L", "DEF-hand_R"]
         try:
             present = set(str(component.get_bone_name(i)) for i in range(component.get_num_bones()))
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the PIE skeleton could not be enumerated: %s" % error)
-            return wanted[0] if wanted else None
+            return []
+        seen = []
         for name in wanted:
-            if name in present:
-                return name
-        return next(iter(sorted(present)), None)
+            if name in present and name not in seen:
+                seen.append(name)
+        return seen
+
+    def playback(self, component):
+        """Where the single-node player is in the clip, and whether it says it is playing."""
+        position = playing = None
+        try:
+            position = float(component.get_position())
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the playback position is unreadable: %s" % error)
+        try:
+            playing = bool(component.is_playing())
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("is_playing is unreadable: %s" % error)
+        return position, playing
 
     # --- the checks ---------------------------------------------------------------------
 
@@ -300,7 +339,7 @@ class Bed:
             )
             self.check("walk_clip_found", self.anim is not None, {"played_via": self.play_via})
             self.start_x = actor.get_actor_location().x
-        if step == 30:
+        if step == STILL_FROM:
             half = 88.0
             try:
                 half = actor.capsule_component.get_scaled_capsule_half_height()
@@ -317,42 +356,71 @@ class Bed:
                     "why": "the movement component parks the capsule just above the floor",
                 },
             )
+            self.check("idle_plays_nothing", None, "no idle clip in this bundle: not measured")
+            self.bones = self.candidate_bones(component)
+            self.first_positions = {name: self.bone(component, name) for name in self.bones}
+            self.travel = {name: 0.0 for name in self.bones}
+            self.first_playback = self.playback(component)
+            self.still_origin = actor.get_actor_location()
+        if STILL_FROM < step <= STILL_UNTIL:
+            # Per-bone travel is kept as detail, but it cannot tell deformation from the body
+            # drifting: every bone moved the same ~10 cm here. The distance between the two feet is
+            # immune to any displacement of the whole body. A walk makes it change; a skeleton that
+            # is merely carried along leaves it constant. The hands are read too, and this walk
+            # does not swing them: the recipe says so in its limits.
+            for name in self.bones:
+                first, here = self.first_positions.get(name), self.bone(component, name)
+                if first is not None and here is not None:
+                    self.travel[name] = max(self.travel[name], (here - first).length())
+            if step > STILL_FROM + SETTLE_STEPS:
+                for pair in PAIRS:
+                    left, right = self.bone(component, pair[0]), self.bone(component, pair[1])
+                    if left is not None and right is not None:
+                        self.spans.setdefault(pair, []).append((left - right).length())
+        if step == STILL_UNTIL + 1:
+            position_then, _playing_then = self.first_playback
+            position_now, playing_now = self.playback(component)
+            advanced = (
+                None
+                if position_then is None or position_now is None
+                else abs(position_now - position_then) > 1e-3
+            )
             self.check(
                 "walk_plays_looping",
-                None,
+                None if advanced is None else bool(advanced and playing_now),
                 {
-                    "api": self.play_via,
-                    "why": "the call succeeded, which is not the same as the clip advancing; "
-                    "walk_clip_moves_bones is what would measure that",
+                    "position_from_s": None if position_then is None else round(position_then, 4),
+                    "position_to_s": None if position_now is None else round(position_now, 4),
+                    "is_playing": playing_now,
                 },
             )
-            self.sample_bone = self.probe_bone(component)
-            self.first_bone = self.bone(component, self.sample_bone)
-            self.check("idle_plays_nothing", None, "no idle clip in this bundle: not measured")
-        if 30 < step <= 45 and self.first_bone is not None:
-            # Sampled over a window, not at two instants: a toe can sit still between two phases
-            # of a walk, and a single pair of samples then reports a clip that is playing as dead.
-            here = self.bone(component, self.sample_bone)
-            if here is not None:
-                self.bone_travel = max(self.bone_travel, (here - self.first_bone).length())
-        if step == 46:
+            ranges = {
+                "%s~%s" % pair: round(max(values) - min(values), 3)
+                for pair, values in self.spans.items()
+                if len(values) >= 2
+            }
+            widest = max(ranges.values()) if ranges else None
             self.check(
                 "walk_clip_moves_bones",
-                None if self.first_bone is None else self.bone_travel > 0.01,
+                None if widest is None else widest > BONE_TRAVEL_CM,
                 {
-                    "bone": self.sample_bone,
-                    "max_travel_cm": round(self.bone_travel, 4),
-                    "over_steps": [30, 45],
+                    "distance_range_cm_by_pair": ranges,
+                    "threshold_cm": BONE_TRAVEL_CM,
+                    "per_bone_travel_cm": {k: round(v, 3) for k, v in self.travel.items()},
+                    "over_steps": [STILL_FROM + SETTLE_STEPS, STILL_UNTIL],
+                    "actor_moved_cm": round((actor.get_actor_location() - self.still_origin).length(), 3),
+                    "why": "the distance between paired limbs ignores any rigid offset of the body; "
+                    "only the skeleton deforming can make it change",
                 },
             )
-        if 45 < step <= 150:
+        if STILL_UNTIL < step <= WALK_UNTIL:
             actor.add_movement_input(unreal.Vector(1.0, 0.0, 0.0), 1.0, True)
             position = actor.get_actor_location().x
             self.wall_samples.append(position)
             distance = abs(position - PROP_X)
             if self.closest_to_prop is None or distance < self.closest_to_prop:
                 self.closest_to_prop = distance
-        if step == 151:
+        if step == WALK_UNTIL + 1:
             travelled = actor.get_actor_location().x - self.start_x
             self.check("character_moves", travelled > 10.0, {"delta_x_cm": round(travelled, 2)})
             peak = max(self.wall_samples) if self.wall_samples else 0.0
@@ -374,19 +442,18 @@ class Bed:
             self.finish()
 
     def bone(self, component, name):
-        """How far this bone has moved from its reference pose.
+        """Where a bone is relative to its own actor, so the actor walking does not count.
 
-        A world socket location also moves when the actor walks, which is how the first version of
-        this check passed while measuring nothing about the clip. The delta from the rest pose
-        cannot: it is zero unless the skeleton is actually deformed.
+        It does not remove the clip's own travel: see the module docstring. Nor does
+        `get_delta_transform_from_ref_pose`, tried first: it is a local translation, and a bone that
+        only rotates keeps it constant.
         """
         if not name:
             return None
         try:
-            delta = component.get_delta_transform_from_ref_pose(name)
-            return delta.translation
+            return component.get_socket_location(name) - self.playing.get_actor_location()
         except Exception as error:  # noqa: BLE001
-            self.builder.warn("the delta from the ref pose of %s is unreadable: %s" % (name, error))
+            self.builder.warn("the location of %s is unreadable: %s" % (name, error))
             return None
 
     def finish(self, aborted=None):
@@ -416,7 +483,12 @@ class Bed:
         self.handle = unreal.register_slate_post_tick_callback(self.step)
 
 
-def _published(ctx, asset_id, builder):
+def _published(ctx, asset_id, clip_id, builder):
+    """The published mesh, and the clip to play: the one named, or the first when none is.
+
+    A clip that is named and absent is not an error here. The bed runs without it and says which
+    checks that fails, by name: that is the negative control, and it is what a caller needs to read.
+    """
     version = ctx.next_version - 1
     if version < 1:
         raise OpError(
@@ -425,19 +497,27 @@ def _published(ctx, asset_id, builder):
             recovery="run asset.import first",
         )
     content_path = "%s/%s/v%03d" % (ctx.destination_root, asset_id, version)
-    mesh = anim = None
+    mesh = None
+    anims = []
     for path in unreal.EditorAssetLibrary.list_assets(content_path, recursive=True) or []:
         asset = unreal.EditorAssetLibrary.load_asset(str(path))
         kind = type(asset).__name__ if asset else ""
         if kind == "SkeletalMesh" and mesh is None:
             mesh = asset
-        elif kind == "AnimSequence" and anim is None:
-            anim = asset
-    if mesh is None or anim is None:
-        raise OpError(
-            "VALIDATION_FAILED",
-            "the published version has no %s" % ("skeletal mesh" if mesh is None else "animation"),
-        )
+        elif kind == "AnimSequence":
+            anims.append((str(path).rsplit("/", 1)[-1].split(".")[0], asset))
+    if mesh is None:
+        raise OpError("VALIDATION_FAILED", "the published version has no skeletal mesh")
+    if clip_id:
+        # The importer names a clip A_<asset>_<clip_id>.
+        named = [asset for name, asset in anims if name.endswith("_" + clip_id)]
+        anim = named[0] if named else None
+        if anim is None:
+            builder.warn("clip %s is not in %s: the bed runs without a clip" % (clip_id, content_path))
+    else:
+        anim = anims[0][1] if anims else None
+    if anim is None and not clip_id:
+        raise OpError("VALIDATION_FAILED", "the published version has no animation")
     return content_path, version, mesh, anim
 
 
@@ -445,7 +525,8 @@ def run(ctx, request, builder):
     """Build the bed, play it, and wait for the ticks to finish before writing anything."""
     asset_id = request["target"].get("asset_id")
     instance = ctx.instance(asset_id)
-    content_path, version, mesh, anim = _published(ctx, asset_id, builder)
+    clip_id = (request.get("parameters") or {}).get("clip_id")
+    content_path, version, mesh, anim = _published(ctx, asset_id, clip_id, builder)
 
     def publish(report):
         """Called on the tick when the bed is done. Writes the result, then quits."""
@@ -474,7 +555,9 @@ def run(ctx, request, builder):
                 {
                     "code": "VALIDATION_FAILED",
                     "message": "the prototype failed: %s" % ", ".join(report["failed_checks"]),
-                    "recovery": "read smoke-report.json: each check says what it measured",
+                    # A failed run publishes nothing, so the report stays where it was written.
+                    "recovery": "read %s: each check says what it measured"
+                    % os.path.join(ctx.out_dir, "smoke-report.json"),
                     "details": {"failed_checks": report["failed_checks"]},
                 }
             )

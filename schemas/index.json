@@ -129,7 +129,9 @@
     "game.smoke_test": {
       "cli_command": null,
       "input_paths": [],
-      "modes": [],
+      "modes": [
+        "batch"
+      ],
       "optional_dependencies": [],
       "publication": "reports_and_artifacts",
       "required_dependencies": [

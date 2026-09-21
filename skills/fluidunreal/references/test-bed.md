@@ -1,10 +1,11 @@
 # Test bed and frame
 
-**Not available yet.** `game.smoke_test` is built and runs, and it is held back on purpose:
-nine of its ten measurable checks pass, and the tenth reads exactly 0.0 cm of bone travel. An
-operation that cannot pass is not shipped as available.
+`game.smoke_test` is available since 0.3.1: U07 plays the reference character in the real 5.8.2,
+and its negative control fails on cue. `game.screenshot` is not built and answers
+`UNSUPPORTED_CAPABILITY`.
 
-`game.screenshot` is not built. Both answer `UNSUPPORTED_CAPABILITY`.
+Optional parameter: `clip_id`, the clip to play (the first one when absent). A clip that is named
+and absent is not refused: the bed runs without it and fails the animation checks by name.
 
 Examples: [request-game-smoke-test.json](../assets/request-game-smoke-test.json),
 [request-game-screenshot.json](../assets/request-game-screenshot.json).
@@ -19,7 +20,7 @@ template is three text files, pinned by sha256.
 
 Headless Play-In-Editor is driveable from Python: 180 ticks at a fixed sixtieth of a second through
 `register_slate_post_tick_callback`. Ten checks measured and passed, zero failed, four not measured
-by that bed.
+by that bed. One of the ten was passed by the wrong thing: see below.
 
 Four things had to be right, and each was wrong first:
 
@@ -34,20 +35,39 @@ Four things had to be right, and each was wrong first:
 Measured afterwards: the capsule rests 2.15 cm above the floor because the movement component parks
 it there, so the tolerance is 3 cm and the reason is written down rather than the number fudged.
 
-## The check that does not pass, and what it taught
+## The check that was wrong three times
 
-`walk_clip_moves_bones` reads a named deform bone over fifteen consecutive ticks while the
-character stands still. It reads **0.0 cm**: `play_animation` returns successfully on the PIE
-component, and the clip does not advance.
+`walk_clip_moves_bones` asks whether the clip deforms the skeleton while the character stands still.
+It is the check most easily passed by something else, and it was:
 
-Lot 0 reported this check as passing. It was wrong. Its measuring window overlapped the window in
-which the character was walking, so what it measured was the actor translating across the floor,
-not the skeleton deforming. Moving the movement window later exposed it, and a single pair of
-samples became a window of fifteen, which is why the zero is trustworthy.
+1. Lot 0 passed it by measuring the actor walking: its window overlapped the walk.
+2. The next version read a big toe's offset from the reference pose: a local translation, constant
+   for a bone that only rotates. It read 0.0 cm, which looked like a clip that does not play. Probe
+   P6 read the player itself, its position advancing and `is_playing` true: the clip plays.
+3. The next read bones relative to the actor and found every bone, spine and forehead included,
+   moving the same 10 cm in 0.34 s. Unrelated bones moving by the same amount is the whole body
+   moving, not deformation. The reference walk carries the body forward at 30 cm/s: it is declared
+   in place and travels 0.58 m per loop, which the audit now fails.
 
-Nine checks pass: the world loads, the character spawns in the PIE world with the bundle's 188
-bones, it rests on the floor, it walks 326 cm, the wall stops it, and it passes within a centimetre
-of the prop. That is worth having. It is not worth calling a passing smoke test.
+It now reads the **distance between the two feet**, which no displacement of the whole body can
+change. Over the window it varies by about 5 cm. The hands are read too and hold their distance:
+this walk does not swing its arms, and its recipe says so in its limits. The negative control runs
+the same bed with no clip: the feet's distance stays constant, and `walk_clip_found`,
+`walk_plays_looping` and `walk_clip_moves_bones` fail by name.
+
+`walk_plays_looping` reads the player: its position advances (0.84 s to 1.18 s over the window) and
+it says it is playing. A successful `play_animation` call is not taken for playback.
+
+## What passes, and what a pass does not say
+
+Ten checks measured and passed, zero failed, four not measured: the world loads, the character
+spawns in the PIE world with the bundle's 188 bones, rests on the floor, the clip plays and deforms
+the legs, the character walks 356 cm, the wall stops it, and it comes within 2.4 cm of the prop.
+
+The reference walk drifts inside its capsule, and the bed sees it: that is the uniform 10 cm. In a
+game, a clip declared in place that travels slides ahead of the capsule and snaps back every loop.
+None of the fourteen checks is about that, so the smoke test passes; the audit's
+`root_motion_travel` fails. Read both.
 
 ## The fourteen checks
 

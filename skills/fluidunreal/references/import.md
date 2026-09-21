@@ -37,7 +37,7 @@ Each measurement carries its space, its unit and its tolerance, and `passed` is 
 | `scale_check` | each `reference_pose` bone, its height in centimetres against `head_m × 100` | 1 cm |
 | `axis_check` | the highest reference bone really has the greatest Z | — |
 | `anim_length` | frames and seconds against `frame_range` and `fps` | 1 frame |
-| `root_motion_travel` | the **root** bone, bone 0, against `stride_m × repetitions × 100` | 2 cm |
+| `root_motion_travel` | the bones hanging from the importer's proxy root, median of their horizontal travel, against `stride_m × repetitions × 100`, or zero for a clip declared in place | 2 cm (1 cm in place) |
 | `socket_position` | each `grip_*` socket against `grips` | 0.1 cm |
 | `bone_count` | the bundle's count, proxy root excluded | exact |
 
@@ -48,9 +48,24 @@ falsifying the reference pose by ten centimetres fails all five. The measurement
 A measurement that could not be taken is `not_run`: listed, never counted as a pass, never counted
 as a defect either.
 
-## Why the root bone matters
+## Why root motion is not read on bone 0
 
-Lot 0 read the first animation track and got `def-thigh_l`, a thigh that swings 57.5 cm during a
-walk. Read as root travel, that would have called an in-place clip a travelling one. The root is
-bone 0 of the skeleton, and the same call on that thigh still returns 57.5 cm, which is what makes
-a root reading of 0.0 cm mean something.
+Bone 0 of an imported skeleton is `<node>_ProxyTrueRootJoint`, a joint the importer adds and no clip
+animates. Lot 0 read it, got 0.0 cm, and called the reference walk in place. The control meant to
+catch a wrong bone was a thigh that read 57.5 cm, taken for a swing. A thigh's head does not swing:
+it goes where the pelvis goes. The 57.5 cm was the travel.
+
+A deform-only export has no single root bone. The reference fixture's 188 bones hang from the proxy
+in 75 separate chains, and every one of them carries the travel. The audit reads all of them and
+takes the median of their horizontal travel from the first frame to the last. Its control is the
+largest excursion of any of them within the clip, which a reader returning constants reads as zero.
+
+On the reference fixture it reads 57.5 cm for a clip declared in place, and fails it. That is a real
+defect of the fixture, confirmed from the GLB without Unreal (0.59 m over 48 frames): fluidblend
+0.6.0 declares every baked clip in place, whatever it does. Declared as the 0.6 m walk it was made
+from, the same clip passes, and declared as a 0.5 m walk it fails: those are the controls.
+
+A declared stride covers the whole clip, and the travel is read from the first frame to the last:
+one frame short of a loop, and Unreal samples one frame fewer than the bundle declares. The stride
+is scaled to the span read (46 frames of 48 on the reference walk). Without that, a correct 0.6 m
+walk reads 57.5 cm against 60 and fails by 2.5 cm.

@@ -291,7 +291,6 @@ OPERATIONS: dict[str, OperationSpec] = {
             "read",
             "P1",
             "Play the kit's test bed headless and report its checks",
-            available=False,
             requires_bundle=True,
             requires_asset=True,
         ),

@@ -47,16 +47,23 @@ somewhere else.
 | `clips[0].clip_id` | `walk-baked` | the animation P3 plays |
 | `clips[0].gltf_animation_name` | `CustomRig_Vitruvian.walk-baked` | the exact name the engine should end up with |
 | `clips[0].frame_range` | `[0, 48)` | the GLB's own range after `slide_to_zero`, not the Blender scene's `[1, 49)` |
-| `clips[0].root_motion` | `in_place` | see the note below |
+| `clips[0].root_motion` | `in_place` | **false**: see the note below |
 | `warnings` | one | "the GLB carries neither constraints nor drivers": expected, and stated |
 | `limits` | none | every node name was confirmed by the control re-import |
 
 ### Note on root motion
 
-This clip is **in place**: `stride_m` and `repetitions` are null. Proof P5 therefore measures the
-in-place case (root travel under 1 cm), which is a real proof but not the travelling one. A
-`root_bone` clip with a measured stride has to be added before `asset.audit`'s `root_motion_travel`
-can be claimed as proven, and the compatibility matrix says so rather than implying otherwise.
+The bundle declares this clip **in place**, and it is not. Every top-level bone of the GLB travels
+0.59 to 0.60 m forward over its 48 frames, read straight from the file without Unreal. The walk the
+bake started from travels (`root_motion: root_bone`, with a stride); fluidblend 0.6.0's
+`animation.bake` writes its manifest without a `root_motion`, so the default, `in_place`, is what
+reaches the bundle.
+
+Proof P5 missed it by reading bone 0, which is a joint the importer adds. `asset.audit` now reads
+the bones that carry the body and fails this clip at 57.5 cm. The fixture is kept as it is: it is
+the case that proves the audit can catch a false declaration. A correct travelling clip is exercised
+by re-declaring it as the walk it was made from (`root_bone`, 0.6 m, the recipe's default stride),
+and passes.
 
 ### Regenerating it
 

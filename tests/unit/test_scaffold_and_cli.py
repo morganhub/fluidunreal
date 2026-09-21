@@ -106,12 +106,12 @@ def test_cli_ops_lists_what_is_not_available_only_on_request(capsys):
     assert main(["ops"]) == exit_codes.OK
     visible = capsys.readouterr().out
     assert "bundle.accept" in visible and "asset.import" in visible
-    assert "game.smoke_test" not in visible, "the test bed is lot 3 and must not look runnable"
+    assert "game.screenshot" not in visible, "the frame is not built and must not look runnable"
     assert "not available yet" in visible
 
     assert main(["ops", "--all", "--json"]) == exit_codes.OK
     every = capsys.readouterr().out
-    assert "game.smoke_test" in every and "retarget.mannequin" in every
+    assert "game.screenshot" in every and "retarget.mannequin" in every
 
 
 def test_cli_reports_a_missing_project_as_blocked(tmp_path: Path, capsys):
