@@ -31,7 +31,7 @@ from fluidblend.core import exit_codes
 from fluidblend.core.atomic import atomic_write_json, read_json
 from fluidblend.core.hashing import fingerprint, new_id, now_iso, sha256_file
 from fluidblend.core.locks import LockBusy, ProjectLocks
-from fluidblend.core.paths import PathRejected, relpath_posix
+from fluidblend.core.paths import FORBIDDEN_CHARS, PathRejected, relpath_posix, resolve_inside
 from fluidblend.core.revisions import RevisionStore
 from fluidblend.core.state import StateStore
 from pydantic import ValidationError
@@ -93,6 +93,11 @@ PUBLICATION = {
     "game.screenshot": "reviews/game",
     "handoff.request": "reviews/handoff",
 }
+
+# Harmless to the kit itself, which never goes through a shell. Refused in paths because the kit
+# prints commands built from them for a person or an agent to paste: inside PowerShell's double quotes
+# a `$` or a backtick is still interpreted, and a `;` in a path is a request written to be a command.
+COMMAND_CHARACTERS = frozenset(";`$")
 
 # A task in one of these states may still be writing, or may have stopped half-way. It blocks a
 # retry of its operation_id until `task reconcile` has looked at what it left.
@@ -475,6 +480,7 @@ class TaskRunner:
                 f"the request is for project {request.project_id}, this one is {self.project.project_id}",
                 status=OperationStatus.failed,
             )
+        self._check_paths(params, spec)
         if not spec.available:
             raise TaskAbort(
                 ErrorCode.UNSUPPORTED_CAPABILITY,
@@ -493,6 +499,38 @@ class TaskRunner:
                     recovery="run bundle.accept first",
                     status=OperationStatus.failed,
                 )
+
+    def _check_paths(self, params: StrictModel, spec: OperationSpec) -> None:
+        """Every `*_path` parameter, judged before a task folder exists that a refusal would leave.
+
+        The handlers check again when they open the file; this is what makes a refusal cost nothing.
+        `bundle.accept` alone reads from outside the root, so its source is held to the checks that
+        do not depend on a root: no UNC share, no `..`, no forbidden or command character.
+        """
+        for name, value in params.model_dump().items():
+            if not name.endswith("_path") or not isinstance(value, str):
+                continue
+            try:
+                if COMMAND_CHARACTERS & set(value):
+                    raise PathRejected(value, "command separator or shell expansion character")
+                if spec.name == "bundle.accept" and name == "source_path":
+                    if value.startswith(("\\\\", "//")):
+                        raise PathRejected(value, "UNC path")
+                    if any(part == ".." for part in Path(value).parts):
+                        raise PathRejected(value, "parent segment '..'")
+                    if any(c in FORBIDDEN_CHARS for c in value):
+                        raise PathRejected(value, "forbidden characters")
+                else:
+                    resolve_inside(self.project.root, value)
+            except PathRejected as exc:
+                raise TaskAbort(
+                    ErrorCode.PERMISSION_REQUIRED,
+                    str(exc),
+                    recovery="give the absolute path of a local folder"
+                    if spec.name == "bundle.accept"
+                    else "give a path relative to the project, inside it",
+                    details={"parameter": name, "reason": exc.reason},
+                ) from exc
 
     def _check_budget(self, request: OperationRequest, spec: OperationSpec) -> Estimate:
         """Refuse over budget before a task folder or an editor exists, so there is nothing to undo.

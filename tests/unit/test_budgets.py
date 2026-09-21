@@ -29,17 +29,7 @@ from fluidunreal.core.budgets import (
 from fluidunreal.core.project import load_project
 from fluidunreal.core.tasks import TaskRunner
 from tests.conftest import make_request, note
-
-BUNDLE = "fx-export-unreal"
-
-
-@pytest.fixture
-def accepted(project, fixture_bundle):
-    outcome = TaskRunner(project).run(
-        make_request("bundle.accept", "acc-001", parameters={"source_path": str(fixture_bundle)})
-    )
-    assert outcome.exit_code == exit_codes.OK, outcome.result.model_dump()
-    return project
+from tests.unit.conftest import BUNDLE, task_dirs
 
 
 def set_budgets(project, **values):
@@ -49,10 +39,6 @@ def set_budgets(project, **values):
     data["budgets"].update(values)
     path.write_text(json.dumps(data, indent=2), encoding="utf-8")
     return load_project(project.root)
-
-
-def task_dirs(project) -> list[str]:
-    return sorted(p.name for p in (project.root / "state" / "tasks").iterdir())
 
 
 def task_events(project, operation_id: str) -> list[dict]:
@@ -99,10 +85,13 @@ def test_U11_a_run_over_budget_is_refused_before_anything_exists(accepted):
     assert task_dirs(small) == before, "no refused run created a task folder"
     for operation_id in ("imp-full", "imp-big"):
         assert task_events(small, operation_id) == []
+    estimate = error.details["estimate"]
+    need = estimate["new_disk_bytes"] / 1024**2
     note(
         "U11",
-        f"{error.message} -> exit 6; {full.result.errors[0].message} -> exit 6; "
-        f"{greedy.result.errors[0].message} -> exit 6; no task folder, no task event, no editor",
+        f"{estimate['seconds']:.0f} s estimated (nothing measured: stated defaults) over "
+        f"max_task_minutes=1 -> exit 6; {need:.0f} MiB needed on a drive with 5 MiB free -> exit 6; "
+        f"{need:.0f} MiB over max_new_disk_gib=0.01 -> exit 6; no task folder, no task event, no editor",
     )
 
 
