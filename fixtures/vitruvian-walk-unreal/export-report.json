@@ -1,0 +1,155 @@
+{
+  "glb": "vitruvian-walk.glb",
+  "bytes": 8372060,
+  "settings": {
+    "export_format": "GLB",
+    "use_selection": true,
+    "export_yup": true,
+    "export_apply": false,
+    "export_animations": true,
+    "export_animation_mode": "ACTIONS",
+    "export_force_sampling": true,
+    "export_optimize_animation_size": true,
+    "export_anim_slide_to_zero": true,
+    "export_reset_pose_bones": true,
+    "export_skins": true,
+    "export_def_bones": true,
+    "export_anim_single_armature": false,
+    "export_influence_nb": 4,
+    "export_cameras": false,
+    "export_lights": false,
+    "export_extras": true,
+    "export_frame_range": true
+  },
+  "axis_convention": {
+    "blender": {
+      "up": "+Z",
+      "forward": "-Y"
+    },
+    "gltf": {
+      "up": "+Y",
+      "forward": "+Z"
+    }
+  },
+  "exported": {
+    "objects": [
+      "CustomRig_Vitruvian",
+      "cm_vitruvian"
+    ],
+    "armatures": {
+      "CustomRig_Vitruvian": 188
+    },
+    "actions": [
+      "CustomRig_Vitruvian.walk-baked"
+    ],
+    "meshes": 1
+  },
+  "node_names": [
+    "CustomRig_Vitruvian",
+    "cm_vitruvian"
+  ],
+  "instances": [
+    {
+      "instance_id": "hero-01",
+      "asset_id": "vitruvian",
+      "asset_version": 1,
+      "kind": "character",
+      "rig_profile": "rigify/0.6.10",
+      "armature": "CustomRig_Vitruvian",
+      "skinned": true,
+      "baked": true,
+      "export_def_bones": true,
+      "bone_count": 188,
+      "gltf_node_name": "CustomRig_Vitruvian",
+      "grips": {},
+      "animations": [
+        "CustomRig_Vitruvian.walk-baked"
+      ],
+      "reference_pose": [
+        {
+          "bone": "DEF-big_toe.02.L",
+          "head_m": [
+            0.190288,
+            -0.130086,
+            0.015391
+          ]
+        },
+        {
+          "bone": "DEF-foot.L",
+          "head_m": [
+            0.196205,
+            0.035931,
+            0.093114
+          ]
+        },
+        {
+          "bone": "DEF-forehead.R",
+          "head_m": [
+            -0.013842,
+            -0.062307,
+            1.692846
+          ]
+        },
+        {
+          "bone": "DEF-hand.L",
+          "head_m": [
+            0.492559,
+            0.034954,
+            1.047232
+          ]
+        },
+        {
+          "bone": "DEF-spine",
+          "head_m": [
+            0.0,
+            0.060055,
+            0.900355
+          ]
+        }
+      ],
+      "gltf_node_name_verified": true
+    }
+  ],
+  "reimport": {
+    "result": [
+      "FINISHED"
+    ],
+    "objects": 2,
+    "armatures": {
+      "CustomRig_Vitruvian": 188
+    },
+    "meshes": 1,
+    "actions": 1,
+    "action_names": [
+      "CustomRig_Vitruvian.walk-baked"
+    ],
+    "extras_instance_ids": [
+      "hero-01"
+    ],
+    "skeleton_fidelity": {
+      "compared": 940,
+      "max_error_m": 2.6027598528596105e-06,
+      "worst": {
+        "armature": "CustomRig_Vitruvian",
+        "bone": "DEF-lid.B.L.003",
+        "frame": 36
+      },
+      "frames": [
+        1,
+        12,
+        24,
+        36,
+        48
+      ],
+      "shift": 1
+    },
+    "checks": {
+      "armature_count": true,
+      "bone_counts": true,
+      "mesh_count": true,
+      "animations_present": true,
+      "skeleton_fidelity": true
+    },
+    "passed": true
+  }
+}

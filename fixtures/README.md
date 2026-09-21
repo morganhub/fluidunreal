@@ -5,54 +5,78 @@ no marketplace content, nothing whose origin cannot be shown.
 
 ## `vitruvian-walk-unreal/` — the reference bundle
 
-Status: **to generate** (needs fluidblend 0.6.0 and Blender 5.2 on the machine).
+Status: **generated**, 2026-09-21, from fluidblend 0.6.0 and Blender 5.2.2 LTS on the reference
+machine. This is what lot 0 imports and what acceptance scenarios U03, U05, U06, U07 and U08 work on.
 
-A hand-off bundle produced by fluidblend from its own CC0 Vitruvian fixture: a skinned Rigify
-character, baked with rigid limbs, exported with the Unreal preset. It is what lot 0 imports and
-what the acceptance scenarios U03, U05, U06, U07 and U08 work on.
+Source: fluidblend's own CC0 Vitruvian fixture (`fluidblend/fixtures/vitruvian/character.blend`), a
+skinned Rigify character. Licence **CC0-1.0**, carried inside the bundle at
+`licenses/vitruvian.md` and reproduced from `fluidblend/licenses/vitruvian.md`.
 
-Recipe, run inside a scratch fluidblend project:
+The fixture is exactly the bundle: the manifest plus the files the manifest names.
+
+| File | Role | Bytes | sha256 (first 16) |
+| --- | --- | --- | --- |
+| `vitruvian-walk.glb` | model | 8 372 060 | `7c25f927c75d86e6…` |
+| `export-report.json` | export_report | 3 378 | `24bbbc69ecbefbe5…` |
+| `gltf-validator.json` | khronos_report | 2 502 | `2b874b6bd6e85694…` |
+| `licenses/vitruvian.md` | license | 2 228 | `ab998eb171e34406…` |
+
+`handoff-bundle.json` itself: `ee96224898315b26…`. Every hash above is also inside the manifest, and
+the generator re-verifies them after copying: a bundle that does not match its own manifest is
+refused rather than committed.
+
+**Not byte-reproducible.** The GLB, the export report and the licence come out identical every run;
+the validator's report and the manifest do not, because each carries a timestamp. Regenerating
+therefore changes two of the hashes above. That is a property of the format, not a fault, and it is
+why a consumer verifies a bundle against *its own* manifest rather than against a hash recorded
+somewhere else.
+
+### What it carries, and why each field matters
+
+| Field | Value | Why the proofs need it |
+| --- | --- | --- |
+| `producer.version` | `0.6.0` | below this, the bundle contract does not exist |
+| `validation.khronos` | `passed` | the shared Khronos validator ran; `not_run` would be acceptable but stated |
+| `validation.reimport_passed` | `true` | Blender re-imported its own GLB consistently |
+| `validation.skeleton_fidelity_max_error_m` | 2.6e-06 | the exported skeleton reproduces the scene to 2.6 µm |
+| `instances[0].bone_count` | 188 | Rigify deform bones; P2 compares the imported skeleton to this |
+| `instances[0].export_def_bones` | `true` | 188 deform bones instead of 1 063 control bones |
+| `instances[0].skinned` / `baked` | `true` / `true` | a real skin and a baked clip, not a control rig |
+| `instances[0].gltf_node_name` | `CustomRig_Vitruvian` | the node P3 looks for in the engine |
+| `instances[0].reference_pose` | 5 bones | `DEF-spine` at 0.900 m, `DEF-forehead.R` at 1.693 m, `DEF-hand.L`, `DEF-foot.L`, `DEF-big_toe.02.L`. P2 measures the scale it really got against these |
+| `clips[0].clip_id` | `walk-baked` | the animation P3 plays |
+| `clips[0].gltf_animation_name` | `CustomRig_Vitruvian.walk-baked` | the exact name the engine should end up with |
+| `clips[0].frame_range` | `[0, 48)` | the GLB's own range after `slide_to_zero`, not the Blender scene's `[1, 49)` |
+| `clips[0].root_motion` | `in_place` | see the note below |
+| `warnings` | one | "the GLB carries neither constraints nor drivers": expected, and stated |
+| `limits` | none | every node name was confirmed by the control re-import |
+
+### Note on root motion
+
+This clip is **in place**: `stride_m` and `repetitions` are null. Proof P5 therefore measures the
+in-place case (root travel under 1 cm), which is a real proof but not the travelling one. A
+`root_bone` clip with a measured stride has to be added before `asset.audit`'s `root_motion_travel`
+can be claimed as proven, and the compatibility matrix says so rather than implying otherwise.
+
+### Regenerating it
 
 ```powershell
-# 1. A game project whose declared target is Unreal.
-fluidblend init --path .\studio --profile game --project-id demo-studio --game-engine unreal
-
-# 2. Admit the CC0 Vitruvian character, build the shot, make it walk, bake it.
-#    (The exact requests live in fluidblend's skills/fluidblend/assets/.)
-fluidblend run --project .\studio --operation requests\shot-build.json
-fluidblend run --project .\studio --operation requests\animation-create-walk.json
-fluidblend run --project .\studio --operation requests\animation-bake-rigid-limbs.json
-
-# 3. Export with the preset: the bundle is published beside the GLB.
-fluidblend run --project .\studio --operation requests\game-export-unreal.json
-
-# 4. Copy the published folder here.
-Copy-Item -Recurse .\studio\exports\shot010\<operation_id> .\fixtures\vitruvian-walk-unreal
+# From this repository, against a fluidblend checkout at ../fluidblend with its LFS files pulled.
+uv run --project ..\fluidblend python scripts\lot0\make_fixture_bundle.py --force
 ```
 
-What the bundle must contain for the proofs to mean anything:
-
-| Field | Expected | Why it matters |
-| --- | --- | --- |
-| `instances[0].bone_count` | 188 | Rigify deform bones; P2 compares the imported skeleton to it |
-| `instances[0].export_def_bones` | `true` | without it the Unreal preset refuses the export |
-| `instances[0].skinned` / `baked` | `true` / `true` | an unbaked control rig is not what an engine should receive |
-| `instances[0].reference_pose` | 2 to 5 bones with `head_m` | P2 measures the scale it really got against these |
-| `clips[0].root_motion` | `root_bone` | P5 measures the travel against `stride_m * repetitions` |
-| `clips[0].stride_m` | 0.6 | the walk fixture's stride |
-| `validation.khronos` | `passed` | the shared validator is installed; `not_run` is acceptable but is stated |
-| `files[]` with `role: license` | present | a bundle never travels without the licence of what it carries |
-
-Licence: CC0-1.0, recorded in the bundle itself (`licenses/vitruvian.md`, copied in by fluidblend)
-and inherited from `fluidblend/licenses/vitruvian.md`.
+The script runs the real chain against the real Blender: install the CC0 character (checking its
+pinned sha256), build the shot, create the walk, bake it with `rigid_limbs`, export with
+`export_preset: "unreal"`. It refuses to continue if the fixture's hash does not match, if no bundle
+was published, or if the copy does not match the manifest.
 
 ## `external-glb/` — a third-party GLB for `bundle.wrap`
 
 Status: **to choose** (acceptance scenario U04).
 
 A CC0 character from Quaternius or Kenney, wrapped by `bundle.wrap` into an `external` bundle. To be
-recorded here with: source URL, author, licence, download date, sha256, and the exact
-`bundle.wrap` command used. A GLB whose licence cannot be shown is not accepted, by the kit or here.
+recorded here with: source URL, author, licence, download date, sha256, and the exact `bundle.wrap`
+command used. A GLB whose licence cannot be shown is not accepted, by the kit or here.
 
 ## Git LFS
 
