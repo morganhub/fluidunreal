@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+
+# The French specification is internal: this repository is English-only.
+fluidunreal.md
+cahier_des_charges*.md
+
+# Unreal: never versioned, never counted in the disk budget, only reported.
+**/Saved/
+**/Intermediate/
+**/DerivedDataCache/
+**/Binaries/
+**/Build/
+*.sln
+.vs/
+
+# Lot 0 raw outputs are committed on purpose; their heavy by-products are not.
+docs/lot0/**/*.log.gz
