@@ -244,8 +244,12 @@ def test_inspect_refuses_a_bundle_that_was_never_accepted(runner):
     assert "no accepted bundle" in outcome.result.errors[0].message
 
 
-def test_an_operation_that_needs_the_editor_says_so_rather_than_pretending(runner):
-    outcome = runner.run(make_request("asset.import", "imp-001", target={"bundle_id": "fx-export-unreal"}))
+def test_an_operation_that_is_not_implemented_yet_says_so_rather_than_pretending(runner):
+    outcome = runner.run(
+        make_request(
+            "asset.audit", "aud-001", target={"bundle_id": "fx-export-unreal", "asset_id": "vitruvian"}
+        )
+    )
     assert outcome.exit_code == exit_codes.BLOCKED
     assert outcome.result.errors[0].code == ErrorCode.UNSUPPORTED_CAPABILITY
     assert "not available in this lot" in outcome.result.errors[0].message

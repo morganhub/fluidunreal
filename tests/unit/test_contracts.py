@@ -79,11 +79,11 @@ def test_unknown_operations_and_bad_parameters_are_refused():
 
 
 def test_the_catalogue_says_what_is_not_implemented_instead_of_hiding_it():
-    """Lot 0 is done, the engine backend is not: every unreal-backed operation is unavailable."""
+    """asset.import landed in lot 2; the test bed and the hand-off are still lots 3."""
     unavailable = {name for name, spec in OPERATIONS.items() if not spec.available}
-    assert "asset.import" in unavailable and "game.screenshot" in unavailable
+    assert {"asset.audit", "game.smoke_test", "game.screenshot", "handoff.request"} <= unavailable
     assert "game.package" in unavailable and "retarget.mannequin" in unavailable
-    assert all(not spec.available for spec in OPERATIONS.values() if spec.backend == "unreal")
+    assert OPERATIONS["asset.import"].available, "proven against the real engine by U05"
     # Nothing claims a live mode: an open editor is a conflict, not a session to write into.
     assert all("live" not in spec.execution_contract()["modes"] for spec in OPERATIONS.values())
 

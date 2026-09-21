@@ -105,12 +105,13 @@ def test_an_invalid_project_id_is_refused(tmp_path: Path):
 def test_cli_ops_lists_what_is_not_available_only_on_request(capsys):
     assert main(["ops"]) == exit_codes.OK
     visible = capsys.readouterr().out
-    assert "bundle.accept" in visible and "asset.import" not in visible
+    assert "bundle.accept" in visible and "asset.import" in visible
+    assert "asset.audit" not in visible, "the audit is lot 3 and must not look runnable"
     assert "not available yet" in visible
 
     assert main(["ops", "--all", "--json"]) == exit_codes.OK
     every = capsys.readouterr().out
-    assert "asset.import" in every and "retarget.mannequin" in every
+    assert "asset.audit" in every and "retarget.mannequin" in every
 
 
 def test_cli_reports_a_missing_project_as_blocked(tmp_path: Path, capsys):
