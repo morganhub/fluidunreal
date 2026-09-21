@@ -17,7 +17,7 @@ Levels: `proven` (output read and kept) · `not_run` (the tool or the step was m
 | Free disk | C: 301 GiB, D: 286 GiB, W: 3192 GiB |
 | Python | 3.13 (uv 0.9.25) |
 | Blender | 5.2 LTS (for the fluidblend side of the chain) |
-| Unreal Engine | **not installed as of 2026-09-21** — lot 0 is blocked until it is |
+| Unreal Engine | **not installed as of 2026-09-21**: lot 0 is blocked until it is |
 | Git / Git LFS | present |
 
 ## Foundations
@@ -40,6 +40,7 @@ Levels: `proven` (output read and kept) · `not_run` (the tool or the step was m
 | Scale measured against the bundle's reference pose, within 1 cm | `not_run` | P2. Measured, never assumed to be a factor of 100 |
 | Reference pose read through a spawned component | `not_run` | P2. The direct skeleton API is not reliably exposed to Python; the fallback is the component |
 | Skin weights limited to 4 influences per vertex | `proven` (harmless) | The exporter already writes 4. See `sources.md` |
+| Reference bundle to import | `proven` | Generated 2026-09-21 by `scripts/lot0/make_fixture_bundle.py`: 188 deform bones, 5 reference bones, Khronos passed, skeleton fidelity 2.6 um, licence carried. See `fixtures/README.md` |
 
 ## Test bed
 
@@ -61,7 +62,7 @@ Levels: `proven` (output read and kept) · `not_run` (the tool or the step was m
 
 | Item | Level | Proof |
 | --- | --- | --- |
-| `root_bone` clip: travel matches `stride_m * repetitions` within 2 cm | `not_run` | P5 |
+| `root_bone` clip: travel matches `stride_m * repetitions` within 2 cm | `not_run` | P5 **cannot run on the current fixture**: its baked walk is in place. A travelling clip has to be added before this is claimed |
 | `in_place` clip: travel under 1 cm | `not_run` | P5 |
 | `object` case (animated node, no bone) qualified | `not_run` | P5. Converted or refused with a `handoff.request`; never guessed |
 

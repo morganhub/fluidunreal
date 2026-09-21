@@ -6,7 +6,7 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 0, blocked.** No line of `src/` is written until the five feasibility proofs have run
+Status: **lot 0, blocked on the engine.** The reference bundle and the five probes are ready; no line of `src/` is written until the five feasibility proofs have run
 on a real engine and their raw output is recorded in [docs/lot0/](docs/lot0/). Unreal Engine is not
 yet installed on the reference machine. Nothing below is claimed as working.
 
