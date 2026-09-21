@@ -12,6 +12,7 @@ import platform
 import shutil
 import subprocess
 import sys
+import time
 from pathlib import Path
 from typing import Any
 
@@ -97,9 +98,13 @@ def _python(project: Project, engine: discovery.EngineInfo | None, *, probe: boo
             executable=engine.path,
             error="not probed (--no-probe): the editor was found but nothing was run",
         )
+    started = time.monotonic()
     answer, failure = discovery.probe(
         Path(engine.path), uproject, script, project.local.unreal_startup_timeout_s
     )
+    # The probe opens the project the way every run does, so its wall time is what a run pays before
+    # its first line of Python: minutes on a first open that compiles shaders, seconds afterwards.
+    warmup_seconds = round(time.monotonic() - started, 1)
     if answer is None:
         return _capability(
             "unreal.python",
@@ -123,6 +128,7 @@ def _python(project: Project, engine: discovery.EngineInfo | None, *, probe: boo
             "engine_version": (answer.get("engine") or {}).get("engine_version"),
             "python": answer.get("python"),
             "probe_seconds": answer.get("probe_seconds"),
+            "warmup_seconds": warmup_seconds,
         },
     )
 

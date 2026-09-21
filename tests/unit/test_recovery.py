@@ -16,6 +16,7 @@ from fluidblend.contracts.common import Artifact, OperationResult, OperationStat
 from fluidblend.contracts.tasks import TaskRecord, WorkerInfo
 from fluidblend.core import exit_codes
 from fluidblend.core.atomic import atomic_write_json
+from fluidblend.core.budgets import load_metrics
 from fluidblend.core.hashing import new_id, now_iso, sha256_file
 from fluidblend.core.locks import ProjectLocks
 from fluidblend.core.paths import relpath_posix
@@ -24,6 +25,7 @@ from fluidunreal.adapters import unreal_batch, unreal_discovery
 from fluidunreal.cli import main
 from fluidunreal.contracts.operations import validate_request
 from fluidunreal.core import tasks as tasks_module
+from fluidunreal.core.budgets import metric_key
 from fluidunreal.core.tasks import TaskRunner
 from fluidunreal.core.ue_content import CONTENT_INDEX, task_leftovers, write_content_index
 from tests.conftest import make_request
@@ -209,6 +211,8 @@ def test_reconcile_removes_exactly_what_the_interrupted_import_wrote(accepted, e
     staging, version = content / "_staging" / task_id, content / ASSET / "v003"
     assert staging.is_dir() and version.is_dir()
     assert "task reconcile --project" in crashed.result.errors[0].recovery
+    # A killed run measures its timeout, not the import: it must not feed the next estimate.
+    assert metric_key("asset.import") not in load_metrics(project.root)
 
     before = task_dirs(project)
     refused = TaskRunner(project).run(request)
@@ -236,6 +240,7 @@ def test_reconcile_removes_exactly_what_the_interrupted_import_wrote(accepted, e
     assert retry.exit_code == exit_codes.OK, retry.result.model_dump()
     assert retry.result.metrics["version"] == 3 and (version / CONTENT_INDEX).is_file()
     assert retry.result.new_revision == 1
+    assert load_metrics(project.root)[metric_key("asset.import")]["history"] == [12.5]
 
 
 def test_reconcile_kills_the_editor_it_recorded_and_spares_a_decoy(accepted, monkeypatch):

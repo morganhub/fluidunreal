@@ -44,7 +44,9 @@ from fluidunreal.contracts.operations import (
     RequestValidationError,
     validate_request,
 )
+from fluidunreal.contracts.plans import Estimate
 from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
+from fluidunreal.core.budgets import DiskFree, budget_errors, estimate_for, free_bytes, record_run
 from fluidunreal.core.permissions import operation_allowed
 from fluidunreal.core.project import (
     Project,
@@ -126,12 +128,21 @@ class RunOutcome:
 
 
 class TaskRunner:
-    def __init__(self, project: Project, *, test_hooks: dict[str, Any] | None = None):
+    def __init__(
+        self,
+        project: Project,
+        *,
+        test_hooks: dict[str, Any] | None = None,
+        disk_free: DiskFree | None = None,
+    ):
         self.project = project
         self.state = StateStore(project.root)
         self.revisions = RevisionStore(project.root)
         self.locks = ProjectLocks(project.root)
         self.test_hooks = test_hooks or {}
+        # How free space is asked for. Replaceable so a test can present a full drive without
+        # filling one; the comparison and the refusal stay the real code.
+        self.disk_free = disk_free or free_bytes
 
     # --- Public API ---------------------------------------------------------------------
 
@@ -147,10 +158,11 @@ class TaskRunner:
             request = request.model_copy(update={"dry_run": True})
         task: TaskRecord | None = None
         try:
-            self._preflight(request, spec)
+            self._preflight(request, params, spec)
             replay = self._idempotency(request)
             if replay is not None:
                 return RunOutcome(replay, exit_codes.OK, replayed=True)
+            estimate = self._check_budget(request, spec)
             with self.locks.hold("project", purpose=f"{spec.name} {request.operation_id}"):
                 # Another writer may have committed while we waited for the lock.
                 replay = self._idempotency(request)
@@ -158,7 +170,7 @@ class TaskRunner:
                     return RunOutcome(replay, exit_codes.OK, replayed=True)
                 task = self._create_task(request, spec)
                 if request.dry_run:
-                    result = self._dry_run_result(request, spec, task)
+                    result = self._dry_run_result(request, spec, task, estimate)
                     task.status = OperationStatus.planned
                     task.result_path = self._save_result(task, result)
                     self.state.upsert_task(task)
@@ -456,7 +468,7 @@ class TaskRunner:
 
     # --- Steps --------------------------------------------------------------------------
 
-    def _preflight(self, request: OperationRequest, spec: OperationSpec) -> None:
+    def _preflight(self, request: OperationRequest, params: StrictModel, spec: OperationSpec) -> None:
         if request.project_id != self.project.project_id:
             raise TaskAbort(
                 ErrorCode.VALIDATION_FAILED,
@@ -481,6 +493,24 @@ class TaskRunner:
                     recovery="run bundle.accept first",
                     status=OperationStatus.failed,
                 )
+
+    def _check_budget(self, request: OperationRequest, spec: OperationSpec) -> Estimate:
+        """Refuse over budget before a task folder or an editor exists, so there is nothing to undo.
+
+        A dry run is checked too: saying `planned` for something the real run would refuse is the
+        kind of green answer this kit does not give.
+        """
+        estimate = estimate_for(self.project, request, spec, disk_free=self.disk_free)
+        errors = budget_errors(self.project, spec, estimate)
+        if errors:
+            first = errors[0]
+            raise TaskAbort(
+                first.code,
+                first.message,
+                recovery=first.recovery,
+                details={**first.details, "all": [error.model_dump(mode="json") for error in errors]},
+            )
+        return estimate
 
     def _idempotency(self, request: OperationRequest) -> OperationResult | None:
         entry = self.state.ledger_entry(request.operation_id)
@@ -657,6 +687,10 @@ class TaskRunner:
                 on_worker_started=remember,
             )
 
+        if outcome.result is not None and not outcome.timed_out:
+            # A killed run measures the timeout, not the operation. Recording it would push every
+            # later estimate to the budget, and the run that could bring it back down would be refused.
+            record_run(self.project.root, spec.name, outcome.elapsed_s)
         if outcome.result is None:
             # The editor left no result: what it wrote is unknown, and calling that a failure
             # would be a guess in the direction that loses work.
@@ -846,7 +880,7 @@ class TaskRunner:
     # --- Results ------------------------------------------------------------------------
 
     def _dry_run_result(
-        self, request: OperationRequest, spec: OperationSpec, task: TaskRecord
+        self, request: OperationRequest, spec: OperationSpec, task: TaskRecord, estimate: Estimate
     ) -> OperationResult:
         contract = spec.execution_contract()
         return OperationResult(
@@ -854,7 +888,7 @@ class TaskRunner:
             operation=spec.name,
             task_id=task.task_id,
             status=OperationStatus.planned,
-            metrics={"dry_run": True, **contract},
+            metrics={"dry_run": True, **contract, "estimate": estimate.model_dump(mode="json")},
             next_safe_actions=[f"run the same request without --dry-run to execute {spec.name}"],
         )
 

@@ -49,6 +49,77 @@
       ],
       "title": "ErrorRecord",
       "type": "object"
+    },
+    "Estimate": {
+      "additionalProperties": false,
+      "description": "What a run is expected to cost before it starts.",
+      "properties": {
+        "checked_before_execution": {
+          "description": "False for a host operation: nothing is refused on this estimate",
+          "title": "Checked Before Execution",
+          "type": "boolean"
+        },
+        "free_disk_bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None when it was not measured",
+          "title": "Free Disk Bytes"
+        },
+        "minutes": {
+          "minimum": 0,
+          "title": "Minutes",
+          "type": "number"
+        },
+        "new_disk_bytes": {
+          "minimum": 0,
+          "title": "New Disk Bytes",
+          "type": "integer"
+        },
+        "run_seconds": {
+          "minimum": 0,
+          "title": "Run Seconds",
+          "type": "number"
+        },
+        "seconds": {
+          "description": "run_seconds + startup_seconds",
+          "minimum": 0,
+          "title": "Seconds",
+          "type": "number"
+        },
+        "sources": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "For each number above, where it came from",
+          "title": "Sources",
+          "type": "object"
+        },
+        "startup_seconds": {
+          "description": "Opening the project, before any Python runs",
+          "minimum": 0,
+          "title": "Startup Seconds",
+          "type": "number"
+        }
+      },
+      "required": [
+        "seconds",
+        "minutes",
+        "run_seconds",
+        "startup_seconds",
+        "new_disk_bytes",
+        "checked_before_execution",
+        "sources"
+      ],
+      "title": "Estimate",
+      "type": "object"
     }
   },
   "$id": "https://fluidunreal.local/schemas/plan.json",
@@ -74,6 +145,9 @@
       "additionalProperties": true,
       "title": "Budget",
       "type": "object"
+    },
+    "estimate": {
+      "$ref": "#/$defs/Estimate"
     },
     "estimated_new_disk_mib": {
       "minimum": 0,
@@ -131,6 +205,15 @@
       "title": "Stop Conditions",
       "type": "array"
     },
+    "verdict": {
+      "enum": [
+        "within_budget",
+        "over_budget",
+        "blocked"
+      ],
+      "title": "Verdict",
+      "type": "string"
+    },
     "warnings": {
       "items": {
         "type": "string"
@@ -148,7 +231,9 @@
     "available",
     "permission_ok",
     "estimated_seconds",
-    "estimated_new_disk_mib"
+    "estimated_new_disk_mib",
+    "estimate",
+    "verdict"
   ],
   "title": "Plan",
   "type": "object"

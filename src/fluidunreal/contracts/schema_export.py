@@ -13,9 +13,10 @@ from fluidblend.contracts.capabilities import CapabilitiesReport
 from fluidblend.contracts.common import OperationResult
 from fluidblend.contracts.handoff import HandoffBundle
 from fluidblend.contracts.project import DependencyLock, RevisionsFile
-from fluidblend.contracts.tasks import Plan, TaskRecord
+from fluidblend.contracts.tasks import TaskRecord
 
 from fluidunreal.contracts.operations import OPERATIONS, OperationRequest
+from fluidunreal.contracts.plans import Plan as UnrealPlan
 from fluidunreal.contracts.project import LocalConfig, ProjectManifest
 from fluidunreal.contracts.reports import AcceptedBundle, AuditReport, ImportedAsset, Measurement
 
@@ -25,7 +26,7 @@ ROOT_SCHEMAS = {
     "operation-request": OperationRequest,
     "operation-result": OperationResult,
     "task": TaskRecord,
-    "plan": Plan,
+    "plan": UnrealPlan,
     "capabilities": CapabilitiesReport,
     "revisions": RevisionsFile,
     "dependencies-lock": DependencyLock,

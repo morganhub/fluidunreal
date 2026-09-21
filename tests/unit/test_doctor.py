@@ -120,6 +120,30 @@ def test_capabilities_needs_a_diagnostic_before_it_can_answer(project, capsys):
     assert "unreal.editor" in capsys.readouterr().out
 
 
+def test_the_probe_records_how_long_the_editor_took_to_open(project, monkeypatch):
+    """`warmup_seconds` is what the budget adds for a start; the probe is a start like any other."""
+    import time
+
+    from fluidunreal.core.budgets import doctor_warmup
+
+    engine = discovery.EngineInfo(path="X:/UE_5.8/UnrealEditor-Cmd.exe", version="5.8.2", series="5.8")
+    answer = {"python": "3.11.8", "unreal_classes": {"AssetImportTask": True}, "probe_seconds": 0.1}
+
+    def slow_probe(*_args):
+        time.sleep(0.2)
+        return answer, ""
+
+    monkeypatch.setattr(discovery, "select", lambda configured=None: (engine, []))
+    monkeypatch.setattr(discovery, "discover", lambda configured=None: [engine])
+    monkeypatch.setattr(discovery, "probe", slow_probe)
+    report = run_doctor(project, probe=True)
+    python = next(c for c in report.capabilities if c.capability_id == "unreal.python")
+    assert python.status == "available" and python.evidence["warmup_seconds"] >= 0.2
+
+    seconds, origin = doctor_warmup(project.root)
+    assert seconds == python.evidence["warmup_seconds"] and "unreal.python" in origin
+
+
 def test_a_foreign_series_is_never_selected(monkeypatch):
     info = discovery.EngineInfo(path="X:/UE_9.9/UnrealEditor-Cmd.exe", version="9.9.0", series="9.9")
     monkeypatch.setattr(discovery, "discover", lambda configured=None: [info])

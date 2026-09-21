@@ -14,10 +14,11 @@ from fluidblend.core import exit_codes
 from fluidblend.core.atomic import read_json
 
 import fluidunreal
-from fluidunreal.contracts.operations import OPERATIONS
+from fluidunreal.contracts.operations import OPERATIONS, RequestValidationError, validate_request
 from fluidunreal.contracts.schema_export import check_up_to_date, export_all
+from fluidunreal.core.planner import make_plan
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
-from fluidunreal.core.tasks import UNSETTLED, TaskRunner
+from fluidunreal.core.tasks import BLOCKED_EXIT, UNSETTLED, TaskRunner
 from fluidunreal.doctor import compare_lock, run_doctor, write_lock
 
 
@@ -129,6 +130,44 @@ def cmd_run(args: argparse.Namespace) -> int:
     return outcome.exit_code
 
 
+def cmd_plan(args: argparse.Namespace) -> int:
+    project = load_project(Path(args.project))
+    try:
+        payload = json.loads(Path(args.operation).read_text(encoding="utf-8"))
+        request, params, spec = validate_request(payload)
+    except RequestValidationError as exc:
+        _refuse(str(exc), args.json, exc.details)
+        return exit_codes.INVALID
+    except (OSError, ValueError) as exc:
+        _refuse(f"cannot read {args.operation}: {exc}", args.json)
+        return exit_codes.INVALID
+    plan = make_plan(project, request, params, spec)
+    if args.json:
+        _print(plan.model_dump(mode="json"), True)
+    else:
+        estimate = plan.estimate
+        free = (
+            f"{estimate.free_disk_bytes / 1024**3:.1f} GiB free"
+            if estimate.free_disk_bytes is not None
+            else "free space not measured"
+        )
+        lines = [
+            f"plan {plan.operation_id} - {plan.operation} ({plan.backend}, {plan.op_class}, {plan.lot})",
+            f"  estimate: {estimate.minutes} min ({estimate.run_seconds:.0f} s run + "
+            f"{estimate.startup_seconds:.0f} s start), {plan.estimated_new_disk_mib:.0f} MiB new, {free}",
+            *(f"    {name}: {source}" for name, source in estimate.sources.items()),
+            f"  budget: {plan.budget['max_task_minutes']} min, {plan.budget['max_new_disk_gib']} GiB",
+            f"  verdict: {plan.verdict}",
+            *(f"  - {step}" for step in plan.steps),
+            *(f"  ! {warning}" for warning in plan.warnings),
+            *(f"  BLOCKING {error.code}: {error.message}" for error in plan.blocking_errors),
+        ]
+        print("\n".join(lines))
+    if not plan.blocking_errors:
+        return exit_codes.OK
+    return BLOCKED_EXIT.get(plan.blocking_errors[0].code, exit_codes.FAILED)
+
+
 def cmd_task(args: argparse.Namespace) -> int:
     runner = TaskRunner(load_project(Path(args.project)))
     action = {"status": runner.status, "cancel": runner.cancel, "reconcile": runner.reconcile}
@@ -225,6 +264,12 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_capabilities)
+
+    p = sub.add_parser("plan", help="estimate a request and say whether it fits, without executing it")
+    p.add_argument("--project", required=True)
+    p.add_argument("--operation", required=True, help="path to the request JSON")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_plan)
 
     p = sub.add_parser("run", help="execute a typed request")
     p.add_argument("--project", required=True)
