@@ -40,9 +40,11 @@ mismatch is reported and the run refuses; it is never repaired behind your back.
 ## Budgets and disk
 
 `budgets.max_task_minutes` defaults to 45 and `max_new_disk_gib` to 20, sized for an engine that
-compiles shaders. `Saved/`, `Intermediate/`, `DerivedDataCache/`, `Binaries/` and `Build/` are
-**reported** by `inspect` and counted against nothing: a first shader compile is gigabytes, and it
-is not something the kit produced.
+compiles shaders. Both are checked before an editor starts, not after: `fluidunreal plan` shows the
+estimate and where each of its numbers came from (see [recovery.md](recovery.md)). `Saved/`,
+`Intermediate/`, `DerivedDataCache/`, `Binaries/` and `Build/` are **reported** by `inspect` and
+counted against nothing: a first shader compile is gigabytes, and it is not something the kit
+produced.
 
 ## The link to fluidblend
 

@@ -3,6 +3,47 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## Unreleased
+
+- **`fluidunreal task status|cancel|reconcile --project <p> --id <task_id>`.** The skill and the
+  recovery messages named these, and none of them existed. `reconcile` takes the project
+  lock, stops the task's editor if it still runs, removes what the task provably wrote, and
+  concludes it `failed` so the same `operation_id` can run again. Provably means two things: the
+  importer's staging folder, named after the task; and the version folder the task's envelope was
+  given, when it has no `FLUID_CONTENT.json`. Everything else it finds is reported and left alone.
+  A removal that fails keeps the task `unknown` (exit 5) rather than orphan the file. `cancel` kills
+  the editor and leaves the task `unknown`, for reconcile to judge what the kill left. An editor is
+  identified by its pid and the `-fluidunreal-task=<id>` marker, never by its name.
+- **`fluidunreal resume --project <p>`** rebuilds the state from the journal and lists every task
+  left queued, running, validating or unknown, with the exact reconcile command for each and
+  whether its editor still runs. Exit 5 while anything is left.
+- **Budgets are checked before execution.** An editor-backed run is estimated before its task
+  folder or its editor exists, and refused with exit 6 over `max_task_minutes`, over
+  `max_new_disk_gib`, or when the drive holding the content root has less free space than it needs.
+  Time is the mean of the recorded runs of that operation plus the start `doctor` measured; with
+  nothing measured, a stated 120 s plus `unreal_startup_timeout_s`, 12 minutes by default. Disk is
+  the bundle times a stated factor of 4 for an import. Every number says where it came from. Each
+  finished run records `unreal_elapsed_s` in `state/metrics.json`; a timed-out one does not, since
+  it measures its timeout. Dry runs are held to the same check.
+- **`fluidunreal plan --project <p> --operation <request.json>`** prints that estimate, its sources
+  and a verdict after the runner's own gates, and executes nothing: exit 0 within budget, 6 over it.
+  The plan is fluidblend's `Plan` plus `estimate` and `verdict`; `schemas/plan.json` changes.
+- **Paths are judged before a task exists.** A `..`, a UNC share or a path outside the root was
+  refused by the handler, after the task folder and its journal entry had been written, and a `;`,
+  `$` or backtick in a path was not refused at all. Both are now refused in preflight.
+  `bundle.accept`'s source, the one path allowed outside the root, is held to the checks that need
+  no root.
+- `doctor` records `warmup_seconds`, the probe's wall time. The environment reference already said
+  it did.
+- The envelope counted versions for the bundle's first instance when a request named its asset in
+  `parameters.asset_id`, which the runtime reads first. It now counts them for that asset, so the
+  version a task was told to create is the one reconcile can attribute to it.
+- Recovery messages print the exact command with the project's path. Two of them lacked
+  `--project` and would not have parsed.
+- U09 (idempotence), U10 (escaping paths and commands) and U11 (budgets) pass without Unreal. U09
+  replays a version-creating import through a fake editor that drives the real runner. Unit tests
+  now replace every process call in the adapter, so none can start, query or kill a real editor.
+
 ## 0.3.1 — 2026-09-21 — the test bed plays, and the audit stops passing a false claim
 
 - **`asset.audit` passed a false in-place claim, and now fails it.** It read root motion on bone 0,

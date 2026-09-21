@@ -43,6 +43,19 @@ The wrapper resolves the kit root in this order: `$env:FLUIDUNREAL_HOME`, then t
 written next to the skill by the installer, then walking up to a `pyproject.toml` that sits beside an
 `unreal_runtime/` directory. Add `--json` for structured output.
 
+| Subcommand | What it does |
+| --- | --- |
+| `doctor`, `capabilities` | probe the machine; read the last probe back |
+| `init --path <dir>`, `inspect` | create or complete a project; read its state |
+| `ops [--all]` | the operation catalogue, and what is not available |
+| `plan --operation <request.json>` | estimate and verdict, nothing executed: exit 0, or 6 over budget |
+| `run --operation <request.json> [--dry-run]` | execute a typed request |
+| `resume` | rebuild the state from the journal; list every task to reconcile, with its command |
+| `task status\|cancel\|reconcile --id <task_id>` | read, stop, or conclude one task (`references/recovery.md`) |
+| `schema export\|check` | the JSON Schemas |
+
+Every subcommand but `init`, `ops` and `schema` takes `--project <project>`.
+
 ## Decision rules
 
 1. **Anything in Blender is not this kit.** A `.blend`, a rig, a clip to create or retime, an
