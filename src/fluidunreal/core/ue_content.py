@@ -107,15 +107,24 @@ class Leftovers:
     kept: list[tuple[Path, str]] = field(default_factory=list)
 
 
-def _holds_only_engine_files(folder: Path) -> bool:
-    return all(p.is_dir() or p.suffix.lower() in ASSET_EXTENSIONS for p in folder.rglob("*"))
+def _foreign_content(folder: Path) -> str | None:
+    """Why a folder holds more than the engine writes. Walked by hand: rglob enters junctions."""
+    for entry in folder.iterdir():
+        if is_reparse_point(entry):
+            return "holds a link or junction"
+        if entry.is_dir():
+            if reason := _foreign_content(entry):
+                return reason
+        elif entry.suffix.lower() not in ASSET_EXTENSIONS:
+            return "holds files that are not Unreal assets"
+    return None
 
 
 def _why_not_removable(path: Path) -> str | None:
     if is_reparse_point(path):
         return "a link or junction: never followed, never removed"
-    if path.is_dir() and not _holds_only_engine_files(path):
-        return "holds files that are not Unreal assets"
+    if path.is_dir():
+        return _foreign_content(path)
     return None
 
 

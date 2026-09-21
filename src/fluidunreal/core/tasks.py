@@ -355,7 +355,7 @@ class TaskRunner:
 
         what = self._describe_reconcile(worker, report)
         task.status = OperationStatus.failed
-        task.partial_effects = self._partial_effects(task_id) + [item["path"] for item in kept]
+        task.partial_effects = self._partial_effects(task_id)
         recovery = "run the same request again: the operation_id is free"
         if published:
             recovery = (

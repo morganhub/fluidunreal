@@ -11,6 +11,7 @@ import json
 import threading
 from pathlib import Path
 
+import pytest
 from fluidblend.contracts.common import OperationStatus
 from fluidblend.contracts.tasks import TaskRecord, WorkerInfo
 from fluidblend.core import exit_codes
@@ -259,6 +260,20 @@ def test_only_what_is_provably_the_tasks_is_removable(tmp_path):
     found = task_leftovers(content, task_id="task-z", asset_id="hero", next_version=4)
     assert found.removable == []
     assert dict(found.kept)[foreign] == "holds files that are not Unreal assets"
+
+
+def test_a_staging_folder_holding_a_junction_is_never_removed(tmp_path):
+    """A junction to a folder of `.uasset` looks like engine content from inside. It is not."""
+    _winapi = pytest.importorskip("_winapi")
+    content = tmp_path / "Content" / "Fluid"
+    staging = write_asset(content / "_staging" / "task-j" / "X.uasset").parent
+    elsewhere = write_asset(tmp_path / "someone-elses" / "Y.uasset").parent
+    _winapi.CreateJunction(str(elsewhere), str(staging / "linked"))
+
+    found = task_leftovers(content, task_id="task-j", asset_id=None, next_version=None)
+    assert found.removable == []
+    assert dict(found.kept)[staging] == "holds a link or junction"
+    assert (elsewhere / "Y.uasset").is_file()
 
 
 def test_the_envelope_counts_versions_for_the_asset_the_runtime_will_import(accepted):

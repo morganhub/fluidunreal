@@ -13,6 +13,7 @@ from fluidblend.core.atomic import atomic_write_json
 from fluidunreal.contracts.operations import OperationRequest, OperationSpec
 from fluidunreal.contracts.plans import Plan
 from fluidunreal.core.budgets import DiskFree, budget_errors, estimate_for
+from fluidunreal.core.permissions import operation_allowed
 from fluidunreal.core.project import Project
 from fluidunreal.core.tasks import TaskAbort, TaskRunner
 
@@ -73,7 +74,7 @@ def make_plan(
         op_class=spec.op_class,
         lot=spec.lot,
         available=spec.available,
-        permission_ok=not any(e.code == ErrorCode.PERMISSION_REQUIRED for e in blocking),
+        permission_ok=operation_allowed(project.permissions, spec).allowed,
         estimated_seconds=estimate.seconds,
         estimated_new_disk_mib=round(estimate.new_disk_bytes / 1024**2, 1),
         resources=resources,

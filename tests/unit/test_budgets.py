@@ -183,17 +183,21 @@ def test_plan_prints_the_estimate_and_the_verdict_without_executing(accepted, tm
 
 def test_plan_says_blocked_for_what_the_runner_would_refuse_first(project, tmp_path, capsys):
     root = str(project.root)
-    unavailable = tmp_path / "screenshot.json"
-    unavailable.write_text(
-        json.dumps(
-            make_request("game.screenshot", "shot-001", target={"bundle_id": BUNDLE, "asset_id": "hero"})
-        ),
-        encoding="utf-8",
-    )
+    unavailable = tmp_path / "package.json"
+    unavailable.write_text(json.dumps(make_request("game.package", "package-001")), encoding="utf-8")
     assert main(["plan", "--project", root, "--operation", str(unavailable), "--json"]) == exit_codes.BLOCKED
     plan = json.loads(capsys.readouterr().out)
     assert plan["verdict"] == "blocked"
     assert plan["blocking_errors"][0]["code"] == ErrorCode.UNSUPPORTED_CAPABILITY
+
+    orphan = tmp_path / "orphan.json"
+    orphan.write_text(
+        json.dumps(make_request("asset.import", "imp-orphan", target={"bundle_id": "never-accepted"})),
+        encoding="utf-8",
+    )
+    assert main(["plan", "--project", root, "--operation", str(orphan), "--json"]) == exit_codes.INVALID
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["verdict"] == "blocked" and "no accepted bundle" in plan["blocking_errors"][0]["message"]
 
     broken = tmp_path / "broken.json"
     broken.write_text(json.dumps(make_request("asset.teleport", "x-001")), encoding="utf-8")
