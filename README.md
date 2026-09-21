@@ -18,6 +18,17 @@ Acceptance scenarios U01 to U06 and U13 pass. Lot 0's five feasibility proofs ar
 [docs/lot0/](docs/lot0/), with their findings in
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 
+## See it yourself
+
+```powershell
+pwsh -File scripts/demo.ps1 -Path "C:\Projectsluidunreal-demo"
+```
+
+It accepts the reference bundle, imports it, audits it, and prints the `.uproject` to open. Inside,
+`Content/Fluid/vitruvian/v001/` holds `SK_vitruvian`, `SKEL_vitruvian` and
+`A_vitruvian_walk-baked`. The measurements are in `reviews/assets/*/audit-report.json`, readable
+without opening the editor at all.
+
 ## What works today
 
 ```powershell
