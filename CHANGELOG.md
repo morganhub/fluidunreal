@@ -3,6 +3,26 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.1.1 — 2026-09-21 — the editor's generated credentials stay out
+
+A secret scanner flagged an AndroidFileServer token in the test bed's
+`Config/DefaultEngine.ini`. The editor writes it the first time it opens a project, and the file
+was tracked, so it was committed and then pinned with the token already in it.
+
+The token opens nothing: it authenticates a debug file-transfer server to an Android build of that
+throwaway project, over USB, with `bIncludeInShipping` false. There is no Android target, no build,
+no service. The defect was tracking a file the editor writes into.
+
+- The lot 0 bed is materialised from the pinned template into an ignored working copy, refreshed on
+  every run. Nothing the editor writes is committed.
+- `AndroidFileServer` is disabled in both `.uproject` files, so no token is generated. Verified by
+  re-running P1: it passes and leaves the config clean.
+- Two tests refuse the class of mistake: no tracked file may carry a generated credential, and the
+  lot 0 bed may not be tracked.
+
+The token is still in the history of `aa01702` and `fa5f7f3`. Removing it there needs a history
+rewrite and a force push.
+
 ## 0.1.0 — 2026-09-21 — lot 1, the host side
 
 Everything that happens without starting the editor, and the refusals that keep the rest honest.
