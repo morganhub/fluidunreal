@@ -1,0 +1,28 @@
+{
+  "schema_version": "{{schema_version}}",
+  "project_id": "{{project_id}}",
+  "name": "{{project_name}}",
+  "profile": "unreal",
+  "ue": {
+    "uproject": "{{uproject}}",
+    "engine_series": "{{engine_series}}",
+    "content_root": "Content/Fluid"
+  },
+  "sources": {
+    "fluidblend_project": {{fluidblend_project}}
+  },
+  "autonomy": {
+    "mode": "assisted",
+    "approval_record": "state/approvals/project-scope.json",
+    "max_repair_attempts": 3
+  },
+  "budgets": {
+    "max_task_minutes": 45,
+    "max_preview_frames": 240,
+    "max_new_disk_gib": 20.0,
+    "max_external_spend": 0.0
+  },
+  "dependency_lock": "dependencies.lock.json",
+  "created_at": "{{created_at}}",
+  "fluidunreal_version": "{{fluidunreal_version}}"
+}

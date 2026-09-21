@@ -1,0 +1,32 @@
+{
+  "directories": [
+    "bundles",
+    "imports",
+    "requests",
+    "requests/fluidblend",
+    "reviews",
+    "reviews/bundles",
+    "reviews/assets",
+    "reviews/game",
+    "reviews/handoff",
+    "licenses",
+    "checkpoints",
+    "config",
+    "state",
+    "state/tasks",
+    "state/locks",
+    "state/plans",
+    "state/diagnostics",
+    "state/approvals",
+    "ue"
+  ],
+  "files": {
+    "project.json": "project.json.tmpl",
+    "config/local.json": "local.json.tmpl",
+    "config/permissions.json": "permissions.json.tmpl",
+    "AGENTS.md": "AGENTS.md.tmpl",
+    "CLAUDE.md": "CLAUDE.md.tmpl",
+    ".gitignore": "gitignore.tmpl",
+    ".gitattributes": "gitattributes.tmpl"
+  }
+}

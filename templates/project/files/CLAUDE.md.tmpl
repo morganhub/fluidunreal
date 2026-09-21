@@ -1,0 +1,19 @@
+# {{project_name}} — agent rules
+
+This project is driven by the `fluidunreal` kit. Everything goes through its CLI, which validates,
+journals, locks, versions and produces evidence.
+
+- Read `project.json`, `config/permissions.json` and `state/state.json` before any change.
+- Go through the `fluidunreal` CLI: never an improvised Python script in the editor.
+- Anything about a `.blend`, a rig, an animation clip, an expression or a render belongs to the
+  `fluidblend` skill, not here. This kit imports what that one published and proves what arrived.
+- Imported content is published as `ue/**/Content/Fluid/<asset_id>/vNNN/`. `bundles/**` and
+  everything else under `Content/` are protected.
+- A measurement that could not be taken is `not_run`. It is listed, and never counted as a pass.
+- Before judging how a character looks, open the rendered frame and say you looked at it.
+- An Unreal editor already open on this project is a conflict: stop and ask for it to be closed.
+  Never close, save or reload it on someone's behalf.
+- On a revision conflict, an exceeded budget or a missing permission: stop and explain.
+
+The skill describes the working modes: `.claude/skills/fluidunreal/SKILL.md` or
+`.agents/skills/fluidunreal/SKILL.md`.
