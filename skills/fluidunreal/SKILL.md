@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.0.1", lot: "lot 0 (blocked)", compatibility: "Windows 11, Unreal Engine 5 (series locked by lot 0), uv, PowerShell 7"}
+metadata: {version: "0.1.0", lot: "lot 1 (host side)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -21,9 +21,11 @@ validates, journals, locks, versions and produces evidence. No improvised Python
 **Task completion criterion**: the assets exist in the project, the audit measurements were taken,
 and the limits are stated. Exit code 0 on its own proves nothing.
 
-**Status: lot 0 is not finished.** No operation is available yet. Until the five feasibility proofs
-have run on a real engine and their output is recorded in `docs/lot0/`, this skill answers
-`UNSUPPORTED_CAPABILITY` and says so. Do not promise an import.
+**Status: lot 1.** The host side works: diagnose the machine, create a project, accept a bundle,
+wrap a GLB, re-check one. Everything that starts the editor (`asset.import`, `asset.audit`,
+`game.smoke_test`, `game.screenshot`, `handoff.request`) answers `UNSUPPORTED_CAPABILITY` and names
+the lot it lands in. Run `fluidunreal ops --all --json` rather than guessing. **Do not promise an
+import yet.**
 
 ## Calling the CLI
 
@@ -99,6 +101,7 @@ project's settings.
 | Check the engine before anything | `fluidunreal doctor --project . --json` |
 | Initialize a project with its own test bed | `fluidunreal init --path "D:\Projects\My Game" --project-id my-game --dry-run` then without `--dry-run` |
 | Accept what fluidblend published | `fluidunreal run --project . --operation requests/bundle-accept.json` |
+| Re-check an accepted bundle | `fluidunreal run --project . --operation requests/bundle-inspect.json` |
 | Import and audit in one pass | `fluidunreal run --project . --operation requests/asset-import.json` then `requests/asset-audit.json` |
 | See the character | `fluidunreal run --project . --operation requests/game-screenshot.json` then open `reviews/game/<operation_id>/ue-frame.png` |
 | Ask Blender for a fix | `fluidunreal run --project . --operation requests/handoff-reexport.json`, then hand the printed `fluidblend run …` command to the `fluidblend` skill |

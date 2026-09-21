@@ -1,0 +1,16 @@
+{
+  "schema_version": "1.0",
+  "operation": "bundle.wrap",
+  "operation_id": "wrap-quaternius-knight-001",
+  "project_id": "my-game",
+  "target": {},
+  "parameters": {
+    "model_path": "incoming/knight.glb",
+    "license_path": "licenses/quaternius-knight.md",
+    "license": "CC0-1.0",
+    "bundle_id": "quaternius-knight-01",
+    "fps_numerator": 30,
+    "fps_denominator": 1
+  },
+  "dry_run": false
+}

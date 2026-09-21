@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-21 11:03 UTC",
+  "generated_at": "2026-09-21 11:07 UTC",
   "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
   "scenarios": [
     {
       "scenario": "U01",
       "test": "tests/unit/test_doctor.py::test_U01_doctor_reports_what_it_saw",
       "status": "passed",
-      "duration_s": 0.13,
+      "duration_s": 0.16,
       "detail": "",
       "title": "Diagnose the machine and lock the engine series",
       "notes": []
@@ -24,7 +24,7 @@
       "scenario": "U03",
       "test": "tests/unit/test_bundles.py::test_U03_accept_verifies_everything_it_claims",
       "status": "passed",
-      "duration_s": 0.16,
+      "duration_s": 0.17,
       "detail": "",
       "title": "Accept a bundle published by fluidblend",
       "notes": []
@@ -33,7 +33,7 @@
       "scenario": "U04",
       "test": "tests/unit/test_bundles.py::test_U04_wrap_describes_only_what_the_file_says",
       "status": "passed",
-      "duration_s": 0.33,
+      "duration_s": 0.34,
       "detail": "",
       "title": "Wrap a third-party GLB into a bundle",
       "notes": []

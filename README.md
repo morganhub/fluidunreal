@@ -6,11 +6,30 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 0 done, on Unreal Engine 5.8.2.** Four of the five feasibility proofs pass against the
-real engine; the fifth, the off-screen frame, renders but its coverage measurement is refused as
-untrustworthy and stays `not_run`. Raw output in [docs/lot0/](docs/lot0/), findings in
-[docs/compatibility-matrix.md](docs/compatibility-matrix.md). No line of `src/` is written yet:
-lot 1 starts from these measurements.
+Status: **lot 1, host side.** What works today, proven against Unreal Engine 5.8.2: diagnose the
+machine and lock the series, create a project with its own test bed, accept a hand-off bundle,
+wrap a third-party GLB into one, re-check an accepted bundle. Everything that starts the editor is
+declared unavailable and names the lot it lands in.
+
+Acceptance scenarios U01 to U04 pass. Lot 0's five feasibility proofs are recorded in
+[docs/lot0/](docs/lot0/), with their findings in
+[docs/compatibility-matrix.md](docs/compatibility-matrix.md).
+
+## What works today
+
+```powershell
+fluidunreal doctor --project . --json          # what this machine can actually do
+fluidunreal init --path "D:\Projects\My Game" --project-id my-game
+fluidunreal run --project . --operation requests/bundle-accept.json
+fluidunreal inspect --project . --json
+```
+
+`bundle.accept` verifies every sha256 the manifest declares, the licence, and the producer's
+version before copying anything in. A flipped byte, a missing file, an emptied licence, a producer
+older than the contract, or the same identifier with different contents are each refused with their
+own reason. `bundle.wrap` turns a third-party GLB into a bundle, describing only what the file
+really says, and states that a wrapped GLB has no reference pose so the scale check after import
+will be `not_run`.
 
 ## What it will do
 

@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "operation": "game.screenshot",
+  "operation_id": "frame-hero-001",
+  "project_id": "my-game",
+  "target": {"bundle_id": "export-shot010-hero-unreal-001", "asset_id": "vitruvian"},
+  "parameters": {"width": 640, "height": 360},
+  "dry_run": false
+}

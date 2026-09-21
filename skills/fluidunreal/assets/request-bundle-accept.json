@@ -1,0 +1,11 @@
+{
+  "schema_version": "1.0",
+  "operation": "bundle.accept",
+  "operation_id": "accept-shot010-hero-001",
+  "project_id": "my-game",
+  "target": {},
+  "parameters": {
+    "source_path": "D:\\Projects\\My Film\\exports\\shot010\\export-shot010-hero-unreal-001"
+  },
+  "dry_run": false
+}

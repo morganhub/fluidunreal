@@ -1,0 +1,147 @@
+{
+  "schema_version": "1.0",
+  "kind": "handoff-bundle",
+  "bundle_id": "fx-export-unreal",
+  "producer": {
+    "kit": "fluidblend",
+    "version": "0.6.0",
+    "operation": "game.export",
+    "operation_id": "fx-export-unreal",
+    "project_id": "demo-studio",
+    "shot_id": "shot010",
+    "source_revision": 4,
+    "created_at": "2026-09-21T08:22:56.956Z"
+  },
+  "units": "meters",
+  "fps": {
+    "numerator": 24,
+    "denominator": 1
+  },
+  "axis_convention": {
+    "blender": {
+      "up": "+Z",
+      "forward": "-Y"
+    },
+    "gltf": {
+      "up": "+Y",
+      "forward": "+Z"
+    }
+  },
+  "files": [
+    {
+      "role": "model",
+      "path": "vitruvian-walk.glb",
+      "format": "glb",
+      "sha256": "7c25f927c75d86e62832b331b31cc60427a426a6a427813034da72976fddc0c7",
+      "bytes": 8372060
+    },
+    {
+      "role": "export_report",
+      "path": "export-report.json",
+      "format": "json",
+      "sha256": "24bbbc69ecbefbe5c81601b2bf5b8f71fc929cfec6b072d56fecf03ed80424e1",
+      "bytes": 3378
+    },
+    {
+      "role": "khronos_report",
+      "path": "gltf-validator.json",
+      "format": "json",
+      "sha256": "2b874b6bd6e8569480c8fa2a6f643848721fe92e67e511bf6fa7cd800d1d4cc7",
+      "bytes": 2502
+    },
+    {
+      "role": "license",
+      "path": "licenses/vitruvian.md",
+      "format": "md",
+      "sha256": "ab998eb171e344062f0484ac804a7d1a54e42045f5fda3ed9a3093bf2a05b3b4",
+      "bytes": 2228
+    }
+  ],
+  "validation": {
+    "khronos": "passed",
+    "reimport_passed": true,
+    "skeleton_fidelity_max_error_m": 2.6027598528596105e-06
+  },
+  "instances": [
+    {
+      "instance_id": "hero-01",
+      "kind": "character",
+      "asset_id": "vitruvian",
+      "asset_version": 1,
+      "license": "CC0-1.0",
+      "license_file": "licenses/vitruvian.md",
+      "rig_profile": "rigify/0.6.10",
+      "armature": "CustomRig_Vitruvian",
+      "skinned": true,
+      "baked": true,
+      "export_def_bones": true,
+      "bone_count": 188,
+      "gltf_node_name": "CustomRig_Vitruvian",
+      "reference_pose": [
+        {
+          "bone": "DEF-big_toe.02.L",
+          "head_m": [
+            0.190288,
+            -0.130086,
+            0.015391
+          ]
+        },
+        {
+          "bone": "DEF-foot.L",
+          "head_m": [
+            0.196205,
+            0.035931,
+            0.093114
+          ]
+        },
+        {
+          "bone": "DEF-forehead.R",
+          "head_m": [
+            -0.013842,
+            -0.062307,
+            1.692846
+          ]
+        },
+        {
+          "bone": "DEF-hand.L",
+          "head_m": [
+            0.492559,
+            0.034954,
+            1.047232
+          ]
+        },
+        {
+          "bone": "DEF-spine",
+          "head_m": [
+            0.0,
+            0.060055,
+            0.900355
+          ]
+        }
+      ],
+      "grips": {}
+    }
+  ],
+  "clips": [
+    {
+      "clip_id": "walk-baked",
+      "instance_id": "hero-01",
+      "gltf_animation_name": "CustomRig_Vitruvian.walk-baked",
+      "frame_range": {
+        "start": 0,
+        "end_exclusive": 48
+      },
+      "loop": false,
+      "root_motion": "in_place",
+      "stride_m": null,
+      "repetitions": null,
+      "contacts": [],
+      "events": [],
+      "measurements": []
+    }
+  ],
+  "warnings": [
+    "the GLB carries neither constraints nor drivers"
+  ],
+  "limits": []
+}

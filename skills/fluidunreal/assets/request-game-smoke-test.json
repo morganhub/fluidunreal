@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "operation": "game.smoke_test",
+  "operation_id": "smoke-hero-001",
+  "project_id": "my-game",
+  "target": {"bundle_id": "export-shot010-hero-unreal-001", "asset_id": "vitruvian"},
+  "parameters": {},
+  "dry_run": false
+}

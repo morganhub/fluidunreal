@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "operation": "bundle.inspect",
+  "operation_id": "inspect-shot010-hero-001",
+  "project_id": "my-game",
+  "target": {"bundle_id": "export-shot010-hero-unreal-001"},
+  "parameters": {"verify_hashes": true},
+  "dry_run": false
+}

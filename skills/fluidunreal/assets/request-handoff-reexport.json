@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "operation": "handoff.request",
+  "operation_id": "handoff-reexport-hero-001",
+  "project_id": "my-game",
+  "target": {"bundle_id": "export-shot010-hero-unreal-001"},
+  "parameters": {
+    "kind": "reexport_unreal",
+    "instance_id": "hero-01",
+    "output_name": "shot010-hero"
+  },
+  "dry_run": false
+}

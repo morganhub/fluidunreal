@@ -1,0 +1,12 @@
+{
+  "schema_version": "1.0",
+  "operation": "asset.import",
+  "operation_id": "import-hero-001",
+  "project_id": "my-game",
+  "target": {"bundle_id": "export-shot010-hero-unreal-001"},
+  "parameters": {
+    "destination_root": "/Game/Fluid",
+    "replace_existing": false
+  },
+  "dry_run": false
+}
