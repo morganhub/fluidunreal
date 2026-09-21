@@ -19,7 +19,9 @@ cahier_des_charges*.md
 # No .uasset or .umap in this repository, ever: what the probes import is a build product
 # of running them, not source. The test bed is a .uproject plus .ini, and its scene is
 # built in code at test time.
-scripts/lot0/TestBed/Content/
+# The whole lot 0 bed is a working copy: run.ps1 materialises it from templates/game-unreal/,
+# and the editor writes generated settings and content into it. Nothing here is source.
+scripts/lot0/TestBed/
 *.sln
 .vs/
 

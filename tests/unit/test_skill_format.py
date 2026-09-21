@@ -108,3 +108,57 @@ def test_the_wrapper_is_shipped_with_the_skill():
     wrapper = (SKILL / "scripts" / "fluidunreal.ps1").read_text(encoding="utf-8")
     assert "FLUIDUNREAL_HOME" in wrapper and "unreal_runtime" in wrapper
     assert "kit-path.txt" in wrapper
+
+
+def test_no_committed_file_carries_a_generated_credential():
+    """The editor writes credentials into a project it opens; none of them belong in the repository.
+
+    It appended an AndroidFileServer token to the test bed's DefaultEngine.ini the first time it
+    ran, and that file was committed and then pinned. The bed is now materialised from the template
+    into an ignored working copy, and this refuses the class of mistake rather than that one value.
+    """
+    import subprocess
+
+    root = kit_root()
+    listed = subprocess.run(  # noqa: S603 - argument list
+        ["git", "-C", str(root), "ls-files"], capture_output=True, text=True, check=False
+    )
+    if listed.returncode != 0:
+        pytest.skip("not_run: not a git checkout")
+
+    patterns = ("securitytoken=", "client_secret=", "password=", "api_key=", "access_token=")
+    offenders: list[str] = []
+    for relative in listed.stdout.splitlines():
+        if relative == "tests/unit/test_skill_format.py":
+            continue  # this file names the patterns it looks for
+        path = root / relative
+        if not path.is_file() or path.suffix.lower() in {".glb", ".png", ".uasset", ".umap"}:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="ignore").lower()
+        except OSError:
+            continue
+        for pattern in patterns:
+            for line in text.splitlines():
+                stripped = line.strip()
+                if stripped.startswith(";") or stripped.startswith("#"):
+                    continue
+                if pattern in stripped and stripped.split(pattern, 1)[1].strip():
+                    offenders.append(f"{relative}: {pattern.rstrip('=')}")
+    assert offenders == [], f"generated credentials committed: {offenders}"
+
+
+def test_the_lot0_bed_is_not_committed():
+    """It is a working copy the editor writes into, materialised from the pinned template."""
+    import subprocess
+
+    root = kit_root()
+    listed = subprocess.run(  # noqa: S603 - argument list
+        ["git", "-C", str(root), "ls-files", "scripts/lot0/TestBed"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if listed.returncode != 0:
+        pytest.skip("not_run: not a git checkout")
+    assert listed.stdout.strip() == "", "the lot 0 bed must not be tracked"

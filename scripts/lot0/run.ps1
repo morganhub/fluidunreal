@@ -33,8 +33,21 @@ $ErrorActionPreference = 'Stop'
 $here = Split-Path -Parent $PSCommandPath
 $repo = Resolve-Path (Join-Path $here '..\..')
 $outDir = Join-Path $repo 'docs\lot0'
-$testBed = Join-Path $here 'TestBed\TestBed.uproject'
+$template = Join-Path $repo 'templates\game-unreal'
+# The editor writes into a project it opens: it appends generated settings, including an
+# AndroidFileServer credential, to Config/DefaultEngine.ini. So the bed is materialised from the
+# pinned template into an ignored working copy, and nothing the editor writes is ever committed.
+$bedRoot = Join-Path $here 'TestBed'
+$testBed = Join-Path $bedRoot 'FluidUnrealTestBed.uproject'
 New-Item -ItemType Directory -Force -Path $outDir | Out-Null
+New-Item -ItemType Directory -Force -Path (Join-Path $bedRoot 'Config') | Out-Null
+foreach ($file in @('FluidUnrealTestBed.uproject', 'Config\DefaultEngine.ini', 'Config\DefaultGame.ini')) {
+    $source = Join-Path $template $file
+    $target = Join-Path $bedRoot $file
+    # Always refreshed from the template: a bed carrying yesterday's editor churn is not the one
+    # the pinned hashes describe.
+    Copy-Item $source $target -Force
+}
 
 function Find-Editor {
     if ($Editor) { return $Editor }
