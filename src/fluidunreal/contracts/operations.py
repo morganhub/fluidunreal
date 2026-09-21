@@ -313,7 +313,6 @@ OPERATIONS: dict[str, OperationSpec] = {
             "write",
             "P1",
             "Write a typed fluidblend request when the fix belongs in Blender",
-            available=False,
             requires_bundle=True,
         ),
         _spec(

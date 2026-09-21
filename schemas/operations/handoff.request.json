@@ -73,12 +73,14 @@
   "title": "HandoffRequestParams",
   "type": "object",
   "x-fluidunreal": {
-    "available": false,
+    "available": true,
     "backend": "host",
     "cli_command": null,
     "input_paths": [],
     "lot": "P1",
-    "modes": [],
+    "modes": [
+      "batch"
+    ],
     "op_class": "write",
     "optional_dependencies": [],
     "publication": "reports_and_artifacts",
