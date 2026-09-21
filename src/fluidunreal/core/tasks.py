@@ -49,6 +49,7 @@ from fluidunreal.core.permissions import operation_allowed
 from fluidunreal.core.project import (
     Project,
     ProjectError,
+    inspect_project,
     is_test_bed,
     kit_root,
     outside_changes,
@@ -210,6 +211,30 @@ class TaskRunner:
         if task.status in UNSETTLED:
             info["next_action"] = self._reconcile_command(task_id)
         return info
+
+    def resume(self) -> dict[str, Any]:
+        """The state rebuilt from the journal, and the exact command for every unsettled task."""
+        state = self.state.rebuild(save=True)
+        unsettled = []
+        for record in state["tasks"].values():
+            task = TaskRecord.model_validate(record)
+            if task.status not in UNSETTLED:
+                continue
+            entry = task.model_dump(mode="json")
+            if task.worker:
+                entry["worker_alive"] = unreal_batch.is_task_worker(task.worker.pid, task.task_id)
+            entry["reconcile_command"] = self._reconcile_command(task.task_id)
+            unsettled.append(entry)
+        report = {
+            "project_id": self.project.project_id,
+            "events": state["event_count"],
+            "corrupt_lines": state["corrupt_lines"],
+            "unfinished_tasks": unsettled,
+            "next_actions": [entry["reconcile_command"] for entry in unsettled],
+            "inspect": inspect_project(self.project),
+        }
+        atomic_write_json(self.project.root / "state" / "resume-report.json", report)
+        return report
 
     def cancel(self, task_id: str) -> dict[str, Any]:
         """Stop a task's editor and leave the task `unknown`, for reconcile to conclude.

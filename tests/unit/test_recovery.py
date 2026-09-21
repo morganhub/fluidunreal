@@ -398,3 +398,34 @@ def test_the_envelope_counts_versions_for_the_asset_the_runtime_will_import(acce
         (project.root / "state" / "tasks" / task.task_id / "request.json").read_text(encoding="utf-8")
     )
     assert envelope["context"]["next_version"] == 2
+
+
+def test_resume_rebuilds_from_the_journal_and_names_every_task_to_reconcile(accepted, monkeypatch, capsys):
+    project = accepted
+    stuck = fabricate(project, OperationStatus.unknown, pid=818181, operation_id="imp-stuck")
+    fabricate(project, OperationStatus.failed, operation_id="imp-failed")
+    fabricate(project, OperationStatus.planned, operation_id="imp-dry")
+    LiveWorker(monkeypatch, 818181, lambda: stuck.task_id)
+    # The snapshot is a projection; the journal is what resume trusts.
+    (project.root / "state" / "state.json").unlink()
+    root = str(project.root)
+
+    assert main(["resume", "--project", root, "--json"]) == exit_codes.UNKNOWN_STATE
+    report = json.loads(capsys.readouterr().out)
+    assert [t["task_id"] for t in report["unfinished_tasks"]] == [stuck.task_id]
+    command = f'fluidunreal task reconcile --project "{project.root}" --id {stuck.task_id}'
+    assert report["next_actions"] == [command]
+    assert report["unfinished_tasks"][0]["worker_alive"] is True
+    assert report["inspect"]["bundles"] == [BUNDLE]
+    assert (project.root / "state" / "state.json").is_file()
+    assert (project.root / "state" / "resume-report.json").is_file()
+
+    assert main(["resume", "--project", root]) == exit_codes.UNKNOWN_STATE
+    human = capsys.readouterr().out
+    assert "1 task(s) to reconcile" in human and "its editor is still running" in human
+    assert command in human
+
+    assert main(["task", "reconcile", "--project", root, "--id", stuck.task_id]) == exit_codes.OK
+    capsys.readouterr()
+    assert main(["resume", "--project", root]) == exit_codes.OK
+    assert "0 task(s) to reconcile" in capsys.readouterr().out

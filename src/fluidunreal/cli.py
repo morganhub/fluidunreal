@@ -146,6 +146,27 @@ def cmd_task(args: argparse.Namespace) -> int:
     return exit_codes.OK
 
 
+def cmd_resume(args: argparse.Namespace) -> int:
+    report = TaskRunner(load_project(Path(args.project))).resume()
+    unfinished = report["unfinished_tasks"]
+    if args.json:
+        _print(report, True)
+    else:
+        print(
+            f"resume {report['project_id']}: {report['events']} events, "
+            f"{len(unfinished)} task(s) to reconcile"
+        )
+        if report["corrupt_lines"]:
+            print(f"  ! {len(report['corrupt_lines'])} journal line(s) could not be read")
+        for task in unfinished:
+            running = ", its editor is still running" if task.get("worker_alive") else ""
+            print(
+                f"  {task['task_id']} {task['operation']} [{task['operation_id']}] {task['status']}{running}"
+            )
+            print(f"    -> {task['reconcile_command']}")
+    return exit_codes.UNKNOWN_STATE if unfinished else exit_codes.OK
+
+
 def cmd_schema(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if args.action == "export":
@@ -224,6 +245,11 @@ def build_parser() -> argparse.ArgumentParser:
         tp.add_argument("--id", required=True, help="the task_id that `run` or `resume` printed")
         tp.add_argument("--json", action="store_true", help="accepted for symmetry: the output is JSON")
     p.set_defaults(func=cmd_task)
+
+    p = sub.add_parser("resume", help="rebuild the state from the journal and list what to reconcile")
+    p.add_argument("--project", required=True)
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_resume)
 
     p = sub.add_parser("schema", help="export or check the JSON Schemas")
     p.add_argument("action", choices=["export", "check"])
