@@ -52,7 +52,7 @@ own reason. `bundle.wrap` turns a third-party GLB into a bundle, describing only
 really says, and states that a wrapped GLB has no reference pose so the scale check after import
 will be `not_run`.
 
-## What it will do
+## What it does today
 
 - **Accept a bundle** (`bundle.accept`) published by fluidblend, or wrap a third-party GLB
   (`bundle.wrap`) — licence required either way.
@@ -68,11 +68,18 @@ will be `not_run`.
 - **Hand back** (`handoff.request`) a typed fluidblend request when the fix belongs in Blender. This
   kit never edits a `.blend`.
 
+## What it does not do yet
+
+Package or cook (`game.package`), retarget to the UE5 Mannequin (`retarget.mannequin`), drive an open
+editor live, read FBX. Each is P2, listed by `fluidunreal ops --all` and refused by name. The disk
+estimate for an import is a stated factor, not yet a measurement. The next steps are in
+[docs/roadmap.md](docs/roadmap.md), and what the kit protects against, and how that is proven, in
+[docs/security.md](docs/security.md).
+
 ## What it will not do
 
-Build your game, generate gameplay Blueprints, C++ or Widgets. Retarget to the UE5 Mannequin.
-Package or cook. Drive an open editor live. Touch MetaHuman, Nanite, Lumen, Chaos or Niagara. Claim
-a frame rate or a GPU figure. Run on macOS or Linux. Each of those is refused explicitly, with the
+Build your game, generate gameplay Blueprints, C++ or Widgets. Touch MetaHuman, Nanite, Lumen, Chaos
+or Niagara. Claim a frame rate or a GPU figure. Run on macOS or Linux. Each of those is refused explicitly, with the
 reason, rather than approximated.
 
 ## How the two kits talk
@@ -86,7 +93,7 @@ other's root.
 ## Lot 0
 
 ```powershell
-# Needs Unreal Engine 5 installed, and a bundle exported by fluidblend 0.6.0.
+# Needs Unreal Engine 5.8 installed, and a bundle exported by fluidblend 0.6.0 or later.
 pwsh -File scripts/lot0/run.ps1 -Bundle "D:\studio\exports\shot010\<operation_id>"
 ```
 

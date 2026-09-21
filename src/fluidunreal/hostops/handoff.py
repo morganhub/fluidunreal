@@ -102,7 +102,18 @@ def _reexport(ctx: HostContext, bundle: dict[str, Any], producer: dict[str, Any]
 def _bake(ctx: HostContext, bundle: dict[str, Any], _producer: dict[str, Any]) -> dict[str, Any]:
     instance = _instance(bundle, ctx.params.instance_id)
     clip = _clip(bundle, ctx.params.clip_id)
-    span = clip.get("frame_range") or {}
+    # The Blender range, not the GLB's: `frame_range` starts at 0 after slide_to_zero, and a bake
+    # built from it baked the walk over frames 0-47 instead of 1-48. Bundles name the Blender range
+    # from schema 1.1 on; without it the offset is unknown, and guessing it would bake the wrong
+    # frames without anyone seeing.
+    span = clip.get("source_frame_range")
+    if not span:
+        raise HostOpError(
+            ErrorCode.VALIDATION_FAILED,
+            f"bundle {bundle.get('bundle_id')} (schema {bundle.get('schema_version')}) does not name "
+            f"the Blender range of {clip['clip_id']}: its frame_range is the GLB's, shifted to start at 0",
+            recovery="ask for reexport_unreal first: fluidblend 0.6.2 and later name the range to bake",
+        )
     return {
         "operation": "animation.bake",
         "instance_id": instance["instance_id"],

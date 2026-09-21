@@ -24,6 +24,7 @@ from fluidblend.core.hashing import now_iso
 import fluidunreal
 from fluidunreal.adapters import unreal_discovery as discovery
 from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
+from fluidunreal.core.plugins import unreviewed_plugins
 from fluidunreal.core.project import Project, kit_root
 
 PROBE_SCRIPT = "scripts/lot0/p1_probe.py"
@@ -144,6 +145,12 @@ def _project(project: Project) -> Capability:
         )
     plugins, fatal = discovery.project_plugins(uproject)
     restrictions = []
+    unknown = unreviewed_plugins(project.root, uproject)
+    if unknown:
+        restrictions.append(
+            "plugins the kit has not been proven with, refused until a person approves them with "
+            f"`fluidunreal approve-plugins`: {', '.join(unknown)}"
+        )
     if fatal:
         restrictions.append(
             f"these plugins do not exist on {LOCKED_UNREAL_SERIES} and abort the editor at "

@@ -1,12 +1,12 @@
 {
-  "generated_at": "2026-09-21 14:56 UTC",
+  "generated_at": "2026-09-21 21:15 UTC",
   "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
   "scenarios": [
     {
       "scenario": "U01",
       "test": "tests/unit/test_doctor.py::test_U01_doctor_reports_what_it_saw",
       "status": "passed",
-      "duration_s": 0.14,
+      "duration_s": 0.12,
       "detail": "",
       "title": "Diagnose the machine and lock the engine series",
       "notes": []
@@ -24,7 +24,7 @@
       "scenario": "U03",
       "test": "tests/unit/test_bundles.py::test_U03_accept_verifies_everything_it_claims",
       "status": "passed",
-      "duration_s": 0.18,
+      "duration_s": 0.15,
       "detail": "",
       "title": "Accept a bundle published by fluidblend",
       "notes": []
@@ -33,7 +33,7 @@
       "scenario": "U04",
       "test": "tests/unit/test_bundles.py::test_U04_wrap_describes_only_what_the_file_says",
       "status": "passed",
-      "duration_s": 0.39,
+      "duration_s": 0.34,
       "detail": "",
       "title": "Wrap a third-party GLB into a bundle",
       "notes": []
@@ -42,18 +42,18 @@
       "scenario": "U05",
       "test": "tests/acceptance/test_asset_import.py::test_U05_import_publishes_a_version_it_checked_first",
       "status": "passed",
-      "duration_s": 22.39,
+      "duration_s": 22.65,
       "detail": "",
       "title": "Import a bundle into Unreal and publish it as a version",
       "notes": [
-        "188 deform bones, one animation, published as v001 in 21.62s; the importer's proxy root and its extra assets are reported, not claimed away"
+        "188 deform bones, one animation, published as v001 in 21.95s; the importer's proxy root and its extra assets are reported, not claimed away"
       ]
     },
     {
       "scenario": "U06",
       "test": "tests/acceptance/test_asset_audit.py::test_U06_the_audit_measures_rather_than_assumes",
       "status": "passed",
-      "duration_s": 40.93,
+      "duration_s": 48.94,
       "detail": "",
       "title": "Audit the imported asset: scale, axes, length, root motion",
       "notes": [
@@ -64,22 +64,22 @@
       "scenario": "U07",
       "test": "tests/acceptance/test_smoke_test.py::test_U07_the_bed_plays_the_character_and_says_what_it_did",
       "status": "passed",
-      "duration_s": 19.58,
+      "duration_s": 19.6,
       "detail": "",
       "title": "Play the character headless in the test bed and report 14 checks",
       "notes": [
-        "14 checks measured and passed; the clip wrapped 1 time(s), the distance between the feet varied by 9.5 cm, the prop stayed on the hand over 200 cm"
+        "14 checks measured and passed; the clip wrapped 1 time(s), the distance between the feet varied by 9.4 cm, the prop stayed on the hand over 204 cm"
       ]
     },
     {
       "scenario": "U08",
       "test": "tests/acceptance/test_screenshot.py::test_U08_the_frame_shows_the_character_and_only_the_character_differs",
       "status": "passed",
-      "duration_s": 48.07,
+      "duration_s": 45.69,
       "detail": "",
       "title": "Render one frame off-screen and measure the share the character covers",
       "notes": [
-        "the character and its shadow cover 2.08% of a 640x360 frame, in one region [191, 77, 401, 344]; the frames were opened and looked at when this scenario was written (docs/reviews)"
+        "the character and its shadow cover 2.11% of a 640x360 frame, in one region [274, 77, 409, 357]; the frames were opened and looked at when this scenario was written (docs/reviews)"
       ]
     },
     {
@@ -97,7 +97,7 @@
       "scenario": "U10",
       "test": "tests/unit/test_guards.py::test_U10_escaping_paths_and_commands_are_refused_before_anything_runs",
       "status": "passed",
-      "duration_s": 0.01,
+      "duration_s": 0.02,
       "detail": "",
       "title": "Supply an escaping path or a command as a parameter",
       "notes": [
@@ -108,7 +108,7 @@
       "scenario": "U11",
       "test": "tests/unit/test_budgets.py::test_U11_a_run_over_budget_is_refused_before_anything_exists",
       "status": "passed",
-      "duration_s": 0.04,
+      "duration_s": 0.03,
       "detail": "",
       "title": "Refuse a run over its time or disk budget before anything starts",
       "notes": [
@@ -119,7 +119,7 @@
       "scenario": "U12",
       "test": "tests/acceptance/test_interruption.py::test_U12_an_interrupted_import_is_concluded_not_guessed",
       "status": "passed",
-      "duration_s": 47.01,
+      "duration_s": 41.52,
       "detail": "",
       "title": "Kill the editor mid-import: unknown, refused, reconciled, nothing published",
       "notes": [
@@ -130,7 +130,7 @@
       "scenario": "U13",
       "test": "tests/unit/test_handoff.py::test_U13_every_template_builds_a_request_fluidblend_accepts[look_at_glb]",
       "status": "passed",
-      "duration_s": 0.08,
+      "duration_s": 0.07,
       "detail": "",
       "title": "Hand a fix back to fluidblend as a request it accepts",
       "notes": [
@@ -141,7 +141,7 @@
       "scenario": "U14",
       "test": "tests/acceptance/test_end_to_end.py::test_U14_the_whole_loop_with_both_kits",
       "status": "passed",
-      "duration_s": 126.07,
+      "duration_s": 124.45,
       "detail": "",
       "title": "Blender to Unreal and back: export, import, audit, play, shoot, re-export",
       "notes": [

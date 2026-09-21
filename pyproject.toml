@@ -1,6 +1,6 @@
 [project]
 name = "fluidunreal"
-version = "0.3.3"
+version = "0.3.4"
 description = "Local Unreal Engine 5 import kit drivable by an AI: pluggable skill, tested Python engine, measured evidence."
 readme = "README.md"
 license = "MIT"
@@ -9,7 +9,7 @@ authors = [{ name = "Morgan Vincent" }]
 dependencies = [
     "pydantic>=2.12,<3",
     "filelock>=3.20",
-    "fluidblend>=0.6.0",
+    "fluidblend>=0.6.2",
 ]
 
 [project.urls]
@@ -24,7 +24,7 @@ fluidunreal = "fluidunreal.cli:main"
 # names the modules that may be imported and promises they change only with a CHANGELOG entry
 # marked "breaking for fluidunreal".
 [tool.uv.sources]
-fluidblend = { git = "https://github.com/morganhub/fluidblend", tag = "v0.6.0" }
+fluidblend = { git = "https://github.com/morganhub/fluidblend", tag = "v0.6.2" }
 
 [dependency-groups]
 dev = [

@@ -3,6 +3,32 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.3.4 — 2026-09-21 — what the skill promised about security, now built and proven
+
+- **Plugins are reviewed before a project is opened.** The skill told agents to stop on "a plugin
+  that is not on the whitelist", and there was no whitelist. The kit now opens a project only when
+  every plugin it enables is one it was proven with (the test bed's two, and the three Interchange
+  plugins the engine enables itself) or one a person approved by name with
+  `fluidunreal approve-plugins`, recorded in `state/approvals/plugins.json`. Anything else stops every
+  engine operation before a task exists, `PERMISSION_REQUIRED`, naming them; `doctor` lists them.
+  The kit never approves on its own, and a name the project does not enable cannot be approved.
+- **Guards on the code itself**: the runtime parses as Python 3.11, imports only the standard
+  library and `unreal`, starts no process and calls no `exec` or `eval`; nothing in the repository
+  goes through a shell. Each guard is shown a planted offence, so a green one means something.
+- **fluidblend is pinned on `v0.6.2`**, whose bundles are schema 1.1 and which reads any 1.x. The
+  vendored `schemas/handoff-bundle.json` follows. The reference fixture stays 1.0 and is still read.
+- **`bake_rigid_limbs` baked the wrong frames.** It built its `animation.bake` from the bundle's
+  `frame_range`, which is the GLB's and starts at 0: the walk would have been baked over 0-47
+  instead of 1-48 (found by fluidblend 0.6.2). It now uses `source_frame_range`, the range in
+  Blender, and refuses a 1.0 bundle that does not name it rather than guess the offset.
+- **Both skills in one agent project**: a test installs fluidblend and fluidunreal side by side with
+  their own installers, checks each copy points at its own kit, and has each wrapper answer from
+  its own catalogue. `not_run` without a fluidblend checkout.
+- `docs/security.md`: the threat model, each line with its proof, and what is not verified. Found
+  while writing it: every run starts a `CrashReportClient`, and neither `-nocrashreports` nor
+  `-NoCrashReport` stops it on 5.8.2; each one exited with its run. `docs/roadmap.md`; the README
+  says what the kit does today and does not do yet.
+
 ## 0.3.3 — 2026-09-21 — lot 4 starts: what a human saw becomes a warning
 
 - The owner watched the reference walk and saw its arms held out. The bed had measured it all

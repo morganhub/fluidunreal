@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.3.3", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.3.4", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -53,6 +53,7 @@ written next to the skill by the installer, then walking up to a `pyproject.toml
 | `run --operation <request.json> [--dry-run]` | execute a typed request |
 | `resume` | rebuild the state from the journal; list every task to reconcile, with its command |
 | `task status\|cancel\|reconcile --id <task_id>` | read, stop, or conclude one task (`references/recovery.md`) |
+| `approve-plugins --plugins <A,B>` | record the user's approval of plugins the `.uproject` enables. Only on their explicit decision |
 | `schema export\|check` | the JSON Schemas |
 
 Every subcommand but `init`, `ops` and `schema` takes `--project <project>`.
@@ -149,7 +150,8 @@ Niagara or custom materials; any frame-rate or GPU claim; macOS or Linux.
 Stop, describe the blocker, list the preserved artifacts and the minimal decision expected:
 
 - an Unreal editor open on the project: nothing is launched (`SCENE_CONFLICT`);
-- a plugin in the `.uproject` that is not on the whitelist: name it and ask;
+- a plugin in the `.uproject` the kit was not proven with (`PERMISSION_REQUIRED`): name it and ask.
+  Run `approve-plugins` only when the user has said yes to those names;
 - no usable GPU when a visual proof was asked for: `not_run`, never "probably fine";
 - a protected path, a system permission or an elevation request;
 - an unknown licence for a planned redistribution;

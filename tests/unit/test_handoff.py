@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 
 import pytest
 from fluidblend.contracts.common import ErrorCode
@@ -16,9 +17,27 @@ from fluidunreal.hostops.handoff import TEMPLATES
 from tests.conftest import make_request, note
 
 
+def bundle_11(tmp_path, fixture_bundle):
+    """The reference bundle as fluidblend 0.6.2 writes it: schema 1.1, with the Blender range.
+
+    The fixture itself stays 1.0 on purpose (see fixtures/README.md). Only the manifest changes; the
+    files it hashes are the same.
+    """
+    folder = tmp_path / "bundle-1.1"
+    shutil.copytree(fixture_bundle, folder)
+    manifest = folder / "handoff-bundle.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    data["schema_version"] = "1.1"
+    for clip in data["clips"]:
+        clip["source_frame_range"] = {"start": 1, "end_exclusive": 49}
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    return folder
+
+
 @pytest.fixture
 def linked(tmp_path, fixture_bundle):
-    """A project that knows where the fluidblend project is, with a bundle accepted."""
+    """A project that knows where the fluidblend project is, with a 1.1 bundle accepted."""
+    fixture_bundle = bundle_11(tmp_path, fixture_bundle)
     root = tmp_path / "linked"
     scaffold_project(
         root,
@@ -90,8 +109,25 @@ def test_the_bake_template_names_the_clip_and_its_range(linked):
     assert outcome.exit_code == exit_codes.OK
     payload = read_json(project.root / "requests" / "fluidblend" / "handoff-bake_rigid_limbs.json")
     assert payload["parameters"]["rigid_limbs"] is True
-    assert payload["parameters"]["frame_range"] == {"start": 0, "end_exclusive": 48}
+    # Blender's range, 1-48, not the GLB's 0-47: fluidblend 0.6.2 found this template baking the
+    # wrong frames.
+    assert payload["parameters"]["frame_range"] == {"start": 1, "end_exclusive": 49}
     assert payload["target"]["instance_id"] == "hero-01"
+
+
+def test_a_bundle_that_does_not_name_the_blender_range_is_not_guessed(tmp_path, fixture_bundle):
+    root = tmp_path / "old-bundle"
+    scaffold_project(root, project_id="demo-game", fluidblend_project=str(tmp_path / "studio"))
+    runner = TaskRunner(load_project(root))
+    accepted = runner.run(
+        make_request("bundle.accept", "acc-001", parameters={"source_path": str(fixture_bundle)})
+    )
+    assert accepted.exit_code == exit_codes.OK, "a 1.0 bundle is still read"
+    refused = hand_off(runner, "bake_rigid_limbs", clip_id="walk-baked", instance_id="hero-01")
+    assert refused.exit_code == exit_codes.FAILED
+    assert "does not name the Blender range" in refused.result.errors[0].message
+    assert "reexport_unreal" in refused.result.errors[0].recovery
+    assert not (root / "requests" / "fluidblend" / "handoff-bake_rigid_limbs.json").exists()
 
 
 def test_the_look_template_asks_for_the_browser_and_says_what_comes_next(linked):
@@ -125,8 +161,6 @@ def test_a_wrapped_bundle_has_no_blender_project_behind_it(tmp_path, fixture_bun
     scaffold_project(root, project_id="demo-game", fluidblend_project=str(tmp_path / "studio"))
     project = load_project(root)
     runner = TaskRunner(project)
-    import shutil
-
     shutil.copy2(next(fixture_bundle.glob("*.glb")), project.root / "incoming.glb")
     (project.root / "licenses" / "x.md").write_text("CC0-1.0\n", encoding="utf-8")
     assert (

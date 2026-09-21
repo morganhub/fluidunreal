@@ -17,6 +17,7 @@ import fluidunreal
 from fluidunreal.contracts.operations import OPERATIONS, RequestValidationError, validate_request
 from fluidunreal.contracts.schema_export import check_up_to_date, export_all
 from fluidunreal.core.planner import make_plan
+from fluidunreal.core.plugins import APPROVALS, approve
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
 from fluidunreal.core.tasks import BLOCKED_EXIT, UNSETTLED, TaskRunner
 from fluidunreal.doctor import compare_lock, run_doctor, write_lock
@@ -206,6 +207,24 @@ def cmd_resume(args: argparse.Namespace) -> int:
     return exit_codes.UNKNOWN_STATE if unfinished else exit_codes.OK
 
 
+def cmd_approve_plugins(args: argparse.Namespace) -> int:
+    """A person's decision, recorded. The skill runs this only when the user said so."""
+    project = load_project(Path(args.project))
+    names = [name.strip() for name in args.plugins.split(",") if name.strip()]
+    try:
+        record = approve(project.root, project.uproject, names)
+    except ValueError as exc:
+        _refuse(str(exc), args.json)
+        return exit_codes.INVALID
+    _print(
+        {"approved": names, "record": str(project.root / APPROVALS), "all": sorted(record["plugins"])}
+        if args.json
+        else f"approved {', '.join(names)}; recorded in {project.root / APPROVALS}",
+        args.json,
+    )
+    return exit_codes.OK
+
+
 def cmd_schema(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if args.action == "export":
@@ -295,6 +314,14 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_resume)
+
+    p = sub.add_parser("approve-plugins", help="record a person's approval of plugins the .uproject enables")
+    p.add_argument("--project", required=True)
+    p.add_argument(
+        "--plugins", required=True, help="comma-separated plugin names, as the refusal listed them"
+    )
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_approve_plugins)
 
     p = sub.add_parser("schema", help="export or check the JSON Schemas")
     p.add_argument("action", choices=["export", "check"])

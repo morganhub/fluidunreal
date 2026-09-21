@@ -20,7 +20,7 @@ What is verified before anything is copied:
 
 | Check | Refusal |
 | --- | --- |
-| the manifest matches the contract | `VALIDATION_FAILED`, "re-export with fluidblend 0.6.0 or later" |
+| the manifest matches the contract, any `schema_version` 1.x | `VALIDATION_FAILED`, "re-export with fluidblend 0.6.0 or later". A newer minor than this kit reads (1.1 today) loses only the fields it adds, and they are named in `warnings`; a new major is refused |
 | the producer is 0.6.0 or newer | `VALIDATION_FAILED` |
 | every declared file is there | `VALIDATION_FAILED`, naming the file |
 | every file hashes to its recorded sha256 | `VALIDATION_FAILED`, with both hashes |

@@ -18,7 +18,7 @@ hands over to the `fluidblend` skill, and comes back with `bundle.accept` on the
 | `kind` | The fluidblend request it writes |
 | --- | --- |
 | `reexport_unreal` | `game.export` with `export_preset: "unreal"`, for the instances of this bundle |
-| `bake_rigid_limbs` | `animation.bake` with `rigid_limbs: true` on the named instance and clip |
+| `bake_rigid_limbs` | `animation.bake` with `rigid_limbs: true` on the named instance and clip, over the clip's range in Blender (`source_frame_range`, schema 1.1). A 1.0 bundle does not name it, and its `frame_range` is the GLB's, shifted to start at 0: the template refuses rather than bake the wrong frames, and asks for `reexport_unreal` first |
 | `create_clip` | `animation.create` from a recipe in the catalogue of the sibling kit |
 | `look_at_glb` | `game.import_test` with `template: "web"`, so a human can see the GLB in a browser |
 

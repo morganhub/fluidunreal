@@ -66,7 +66,8 @@
           "type": "array"
         },
         "frame_range": {
-          "$ref": "#/$defs/FrameRange"
+          "$ref": "#/$defs/FrameRange",
+          "description": "The GLB's range: it starts at 0 after slide_to_zero"
         },
         "gltf_animation_name": {
           "maxLength": 200,
@@ -115,6 +116,18 @@
           ],
           "title": "Root Motion",
           "type": "string"
+        },
+        "source_frame_range": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FrameRange"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The clip's range in Blender, as `animation/clips/<clip_id>/clip.json` records it. For a baked clip it is the scene range that was baked: the range a fluidblend request about this clip names. None when the bundle was wrapped, not produced by fluidblend."
         },
         "stride_m": {
           "anyOf": [
@@ -573,8 +586,9 @@
       "$ref": "#/$defs/BundleProducer"
     },
     "schema_version": {
-      "const": "1.0",
-      "default": "1.0",
+      "default": "1.1",
+      "description": "Any 1.x is read; fields from a minor newer than the reader's are dropped and listed",
+      "pattern": "^1\\.(0|[1-9][0-9]{0,3})$",
       "title": "Schema Version",
       "type": "string"
     },

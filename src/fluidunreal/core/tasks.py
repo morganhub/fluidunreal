@@ -48,6 +48,7 @@ from fluidunreal.contracts.plans import Estimate
 from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
 from fluidunreal.core.budgets import DiskFree, budget_errors, estimate_for, free_bytes, record_run
 from fluidunreal.core.permissions import operation_allowed
+from fluidunreal.core.plugins import unreviewed_plugins
 from fluidunreal.core.project import (
     Project,
     ProjectError,
@@ -81,7 +82,7 @@ BLOCKED_EXIT = {
 
 # Where each operation's outputs end up. A destination that already holds something is a conflict,
 # never an overwrite.
-RUNTIME_VERSION = "0.3.3"
+RUNTIME_VERSION = "0.3.4"
 
 PUBLICATION = {
     "bundle.accept": "reviews/bundles",
@@ -497,6 +498,19 @@ class TaskRunner:
                     "the Unreal project cannot be written safely: " + problems[0],
                     recovery="fix what is listed in details; the kit changes nothing outside Content/Fluid",
                     details={"problems": problems},
+                )
+        if spec.backend == "unreal" and self.project.uproject.is_file():
+            # A plugin runs as soon as the project opens, before the kit's runtime has any say.
+            unknown = unreviewed_plugins(self.project.root, self.project.uproject)
+            if unknown:
+                raise TaskAbort(
+                    ErrorCode.PERMISSION_REQUIRED,
+                    f"{self.project.uproject.name} enables plugins the kit has not been proven with: "
+                    + ", ".join(unknown),
+                    recovery="a person decides: "
+                    f'fluidunreal approve-plugins --project "{self.project.root}" --plugins '
+                    + ",".join(unknown),
+                    details={"plugins": unknown},
                 )
         verdict = operation_allowed(self.project.permissions, spec)
         if not verdict.allowed:
