@@ -1,13 +1,14 @@
 {
   "schema_version": "1.0",
-  "hash": "b6ebd24f434dd4f520b6605cd67fe43543738c8e96b69772555b408d20e4d6a8",
+  "hash": "0f84be1e702ce4cefafdbdf828d6ff27afc73d1cfcfae48b5eda7ba92f0447a8",
   "files": {
     "entrypoint.py": "e5745ba3a3a401a37e6db79cb59a02310d6237e506ffaaee5202c1cffc1048df",
-    "fluidunreal_runtime/__init__.py": "4c961d34830240102cfc2f31f95eacb46ba42f44301c9aaea709a4c41b9c9eaf",
+    "fluidunreal_runtime/__init__.py": "85bcfbbf6fce9bd57cd95c95a9c0eea76c8493bdb4403af27de214400011e94d",
+    "fluidunreal_runtime/audit.py": "56c554c392f18840c31b2241ec54023ad80768e2ea19b8cde89fb6c29b50af20",
     "fluidunreal_runtime/envelope.py": "3e1cc318c3680a037a262b22d1de886038ca7ca0490dd07083f8ddc0811af73d",
     "fluidunreal_runtime/errors.py": "8f2fda446d8c864c5ed3cec63a0cf0e0dfd9db170d2aeef4269ea8c2927e1076",
     "fluidunreal_runtime/importer.py": "3c79d8f1e4611bba9a2647d83ae334b8f6c10e3601dec28ef2db6518a9eeec06",
     "fluidunreal_runtime/report.py": "34d8efdba7790f5fdaaa0fe53a438e3091307171a549a21832d32bf454c4e638"
   },
-  "written_at": "2026-09-21T12:07:46.602Z"
+  "written_at": "2026-09-21T12:22:04.036Z"
 }

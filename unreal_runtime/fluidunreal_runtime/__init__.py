@@ -21,9 +21,9 @@ SUPPORTED_UNREAL_SERIES = "5.8"
 
 def _handlers():
     """Imported lazily so a broken handler cannot stop the result from being written."""
-    from fluidunreal_runtime import importer
+    from fluidunreal_runtime import audit, importer
 
-    return {"asset.import": importer.run}
+    return {"asset.import": importer.run, "asset.audit": audit.run}
 
 
 def _check_engine(ctx):

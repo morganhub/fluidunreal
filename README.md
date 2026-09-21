@@ -6,12 +6,12 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 1, host side.** What works today, proven against Unreal Engine 5.8.2: diagnose the
-machine and lock the series, create a project with its own test bed, accept a hand-off bundle,
-wrap a third-party GLB into one, re-check an accepted bundle. Everything that starts the editor is
-declared unavailable and names the lot it lands in.
+Status: **lot 2.** Against Unreal Engine 5.8.2: diagnose the machine and lock the series, create a
+project with its own test bed, accept a hand-off bundle, wrap a third-party GLB into one, import a
+bundle into the project as a version, and measure what the engine wrote. Playing it and drawing it
+are lot 3, and the catalogue says so.
 
-Acceptance scenarios U01 to U04 pass. Lot 0's five feasibility proofs are recorded in
+Acceptance scenarios U01 to U06 pass. Lot 0's five feasibility proofs are recorded in
 [docs/lot0/](docs/lot0/), with their findings in
 [docs/compatibility-matrix.md](docs/compatibility-matrix.md).
 

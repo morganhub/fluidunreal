@@ -281,7 +281,6 @@ OPERATIONS: dict[str, OperationSpec] = {
             "read",
             "P0",
             "Measure what the engine wrote: scale, axes, animation length, root motion, sockets",
-            available=False,
             requires_bundle=True,
             requires_asset=True,
         ),

@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.1.0", lot: "lot 1 (host side)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.2.0", lot: "lot 2 (import and audit)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -21,11 +21,11 @@ validates, journals, locks, versions and produces evidence. No improvised Python
 **Task completion criterion**: the assets exist in the project, the audit measurements were taken,
 and the limits are stated. Exit code 0 on its own proves nothing.
 
-**Status: lot 1.** The host side works: diagnose the machine, create a project, accept a bundle,
-wrap a GLB, re-check one. Everything that starts the editor (`asset.import`, `asset.audit`,
-`game.smoke_test`, `game.screenshot`, `handoff.request`) answers `UNSUPPORTED_CAPABILITY` and names
-the lot it lands in. Run `fluidunreal ops --all --json` rather than guessing. **Do not promise an
-import yet.**
+**Status: lot 2.** Import and audit work against Unreal Engine 5.8.2: accept a bundle, import it
+into the project as a version, and measure what the engine wrote. `game.smoke_test`,
+`game.screenshot` and `handoff.request` answer `UNSUPPORTED_CAPABILITY` and name the lot they land
+in. Run `fluidunreal ops --all --json` rather than guessing. **Nothing here has been seen playing
+or drawn yet: that is lot 3.**
 
 ## Calling the CLI
 

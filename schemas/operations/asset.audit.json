@@ -14,12 +14,14 @@
   "title": "AssetAuditParams",
   "type": "object",
   "x-fluidunreal": {
-    "available": false,
+    "available": true,
     "backend": "unreal",
     "cli_command": null,
     "input_paths": [],
     "lot": "P0",
-    "modes": [],
+    "modes": [
+      "batch"
+    ],
     "op_class": "read",
     "optional_dependencies": [
       "unreal.gpu"

@@ -3,7 +3,9 @@
     "asset.audit": {
       "cli_command": null,
       "input_paths": [],
-      "modes": [],
+      "modes": [
+        "batch"
+      ],
       "optional_dependencies": [
         "unreal.gpu"
       ],

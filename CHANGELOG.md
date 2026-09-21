@@ -3,6 +3,29 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.2.0 — 2026-09-21 — lot 2, import and audit
+
+The engine backend, proven against Unreal Engine 5.8.2. U05 and U06 pass.
+
+- **`asset.import`.** One dedicated editor per operation, driven through an envelope that names
+  every path the runtime may touch. The bundle imports through Interchange, the kit reads back what
+  the editor created, compares it to what the bundle claimed, and only then publishes
+  `/Game/Fluid/<asset_id>/vNNN/` with deterministic names. A failed check publishes nothing.
+- **`asset.audit`.** Measurements with their space, unit and tolerance. Five reference bones land
+  within a millimetre of the bundle's metres, and falsifying that pose by ten centimetres fails all
+  five. The root bone is bone 0, and a control bone that must move is read the same way: without
+  it, a root travel of zero proves nothing. A measurement that could not be taken is `not_run`.
+- **Versions.** `FLUID_CONTENT.json` lists every file of a version with its hash, and the revision
+  points at that, so a `.uasset` edited by hand is caught. A second import makes `v002` and leaves
+  `v001` verifiable.
+- **Unknown beats wrong.** An editor that writes no result leaves an unknown write state, not a
+  failure: calling it failed would guess in the direction that loses work.
+
+Three defects found by running it rather than reading it: a failure while recording the worker left
+the editor orphaned; `delete_directory` left the staging folder on disk; and the root motion
+measurement was reading the first animation track, which is a thigh. The control bone is what
+exposed the last one, by reporting the same 57.5 cm as the root.
+
 ## 0.1.1 — 2026-09-21 — the editor's generated credentials stay out
 
 A secret scanner flagged an AndroidFileServer token in the test bed's

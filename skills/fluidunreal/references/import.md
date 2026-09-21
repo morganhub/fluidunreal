@@ -1,18 +1,20 @@
 # Import and audit
 
-**Not available yet.** The engine backend is lot 2. `asset.import` and `asset.audit` answer
-`UNSUPPORTED_CAPABILITY` and say so; `fluidunreal ops --all --json` lists them. What follows is the
-contract they will honour, written from what lot 0 measured, so nothing here is a guess.
+**Available**, proven against Unreal Engine 5.8.2 by scenarios U05 and U06.
 
 Examples: [request-asset-import.json](../assets/request-asset-import.json),
 [request-asset-audit.json](../assets/request-asset-audit.json).
 
-## What the import will do
+## What the import does
 
 Import into a staging path, read back what the editor actually created, compare it to the bundle,
 and only then publish it as `Content/Fluid/<asset_id>/vNNN/`. A failed check publishes nothing and
-cleans the staging away. `replace_existing` creates the next version; it never overwrites a
-published one.
+cleans the staging away, from the asset registry **and** from disk: `delete_directory` empties the
+registry but leaves the folder behind. `replace_existing` creates the next version; it never
+overwrites a published one.
+
+The published version writes `FLUID_CONTENT.json`, every file with its hash, and the revision
+points at that. A `.uasset` edited by hand in the editor is caught the next time the kit looks.
 
 ## What lot 0 measured, and what it costs
 
@@ -26,7 +28,7 @@ published one.
 | a `MaterialInstanceConstant` and a `PhysicsAsset` are created anyway | the pipeline knob that suppresses them has not been found; the kit will either accept them or find it, and will not claim otherwise |
 | the engine logs an ensure in `InterchangeGltfAnimation.cpp` | non-fatal, recorded, unexplained |
 
-## What the audit will measure
+## What the audit measures
 
 Each measurement carries its space, its unit and its tolerance, and `passed` is three-valued.
 

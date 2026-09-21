@@ -1,0 +1,64 @@
+{
+  "generated_at": "2026-09-21 12:22 UTC",
+  "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
+  "scenarios": [
+    {
+      "scenario": "U01",
+      "test": "tests/unit/test_doctor.py::test_U01_doctor_reports_what_it_saw",
+      "status": "passed",
+      "duration_s": 0.14,
+      "detail": "",
+      "title": "Diagnose the machine and lock the engine series",
+      "notes": []
+    },
+    {
+      "scenario": "U02",
+      "test": "tests/unit/test_scaffold_and_cli.py::test_U02_init_is_idempotent_and_keeps_manual_edits",
+      "status": "passed",
+      "duration_s": 0.09,
+      "detail": "",
+      "title": "Initialize a project, and re-run the initialization",
+      "notes": []
+    },
+    {
+      "scenario": "U03",
+      "test": "tests/unit/test_bundles.py::test_U03_accept_verifies_everything_it_claims",
+      "status": "passed",
+      "duration_s": 0.17,
+      "detail": "",
+      "title": "Accept a bundle published by fluidblend",
+      "notes": []
+    },
+    {
+      "scenario": "U04",
+      "test": "tests/unit/test_bundles.py::test_U04_wrap_describes_only_what_the_file_says",
+      "status": "passed",
+      "duration_s": 0.34,
+      "detail": "",
+      "title": "Wrap a third-party GLB into a bundle",
+      "notes": []
+    },
+    {
+      "scenario": "U05",
+      "test": "tests/acceptance/test_asset_import.py::test_U05_import_publishes_a_version_it_checked_first",
+      "status": "passed",
+      "duration_s": 27.97,
+      "detail": "",
+      "title": "Import a bundle into Unreal and publish it as a version",
+      "notes": [
+        "188 deform bones, one animation, published as v001 in 27.2s; the importer's proxy root and its extra assets are reported, not claimed away"
+      ]
+    },
+    {
+      "scenario": "U06",
+      "test": "tests/acceptance/test_asset_audit.py::test_U06_the_audit_measures_rather_than_assumes",
+      "status": "passed",
+      "duration_s": 40.66,
+      "detail": "",
+      "title": "Audit the imported asset: scale, axes, length, root motion",
+      "notes": [
+        "five reference bones within a millimetre, 188 deform bones, 47 frames against 48, root travel 0.0 cm with a control bone at 57.5 cm"
+      ]
+    }
+  ]
+}
