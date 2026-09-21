@@ -1,0 +1,22 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/retarget.mannequin.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Retarget onto the UE5 Mannequin (not implemented)",
+  "properties": {},
+  "title": "NoParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P2",
+    "modes": [],
+    "op_class": "write",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

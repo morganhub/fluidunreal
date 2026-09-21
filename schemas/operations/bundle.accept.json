@@ -1,0 +1,38 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/bundle.accept.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Accept a hand-off bundle published by fluidblend, verifying every hash and its licence",
+  "properties": {
+    "source_path": {
+      "description": "Folder holding handoff-bundle.json. The one path this kit reads from outside its root, read-only, and only for this operation",
+      "minLength": 1,
+      "title": "Source Path",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source_path"
+  ],
+  "title": "BundleAcceptParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": null,
+    "input_paths": [
+      "source_path"
+    ],
+    "lot": "P0",
+    "modes": [
+      "batch"
+    ],
+    "op_class": "write",
+    "optional_dependencies": [
+      "gltf.khronos_validator"
+    ],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

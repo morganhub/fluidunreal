@@ -1,0 +1,32 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/project.plan.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Estimate a request without executing it",
+  "properties": {
+    "request_path": {
+      "title": "Request Path",
+      "type": "string"
+    }
+  },
+  "required": [
+    "request_path"
+  ],
+  "title": "ProjectPlanParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": "plan",
+    "input_paths": [
+      "request_path"
+    ],
+    "lot": "P0",
+    "modes": [],
+    "op_class": "read",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

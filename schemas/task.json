@@ -1,0 +1,312 @@
+{
+  "$defs": {
+    "Artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes"
+        },
+        "kind": {
+          "description": "blend | frames | video | glb | report | image | json | checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metrics": {
+          "additionalProperties": true,
+          "title": "Metrics",
+          "type": "object"
+        },
+        "path": {
+          "description": "Path relative to the project after publication, relative to the task folder before",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "MISSING_DEPENDENCY",
+        "UNSUPPORTED_CAPABILITY",
+        "RIG_MAPPING_REQUIRED",
+        "SCENE_CONFLICT",
+        "PERMISSION_REQUIRED",
+        "BUDGET_EXCEEDED",
+        "TIMEOUT_UNKNOWN_STATE",
+        "VALIDATION_FAILED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "recovery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorRecord",
+      "type": "object"
+    },
+    "OperationStatus": {
+      "enum": [
+        "planned",
+        "queued",
+        "running",
+        "validating",
+        "succeeded",
+        "failed",
+        "blocked",
+        "unknown",
+        "cancelled"
+      ],
+      "title": "OperationStatus",
+      "type": "string"
+    },
+    "WorkerInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "executable": {
+          "title": "Executable",
+          "type": "string"
+        },
+        "pid": {
+          "title": "Pid",
+          "type": "integer"
+        },
+        "started_at": {
+          "title": "Started At",
+          "type": "string"
+        },
+        "task_marker": {
+          "description": "Identifier present in the worker command line",
+          "title": "Task Marker",
+          "type": "string"
+        }
+      },
+      "required": [
+        "pid",
+        "executable",
+        "started_at",
+        "task_marker"
+      ],
+      "title": "WorkerInfo",
+      "type": "object"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/task.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/Artifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "attempts": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Attempts",
+      "type": "integer"
+    },
+    "budget": {
+      "additionalProperties": true,
+      "title": "Budget",
+      "type": "object"
+    },
+    "checkpoint_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Checkpoint Id"
+    },
+    "created_at": {
+      "title": "Created At",
+      "type": "string"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/ErrorRecord"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "expected_revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Expected Revision"
+    },
+    "fingerprint": {
+      "description": "Canonical sha256 of (operation, target, parameters, expected_revision)",
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "mode": {
+      "default": "batch",
+      "description": "batch (dedicated Blender process) or live (open session through MCP)",
+      "title": "Mode",
+      "type": "string"
+    },
+    "new_revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "New Revision"
+    },
+    "operation": {
+      "title": "Operation",
+      "type": "string"
+    },
+    "operation_id": {
+      "title": "Operation Id",
+      "type": "string"
+    },
+    "partial_effects": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Partial Effects",
+      "type": "array"
+    },
+    "progress": {
+      "additionalProperties": true,
+      "description": "Last cooperative step reported by a live operation",
+      "title": "Progress",
+      "type": "object"
+    },
+    "project_id": {
+      "title": "Project Id",
+      "type": "string"
+    },
+    "result_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result Path"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/OperationStatus"
+    },
+    "target": {
+      "additionalProperties": true,
+      "title": "Target",
+      "type": "object"
+    },
+    "task_id": {
+      "title": "Task Id",
+      "type": "string"
+    },
+    "updated_at": {
+      "title": "Updated At",
+      "type": "string"
+    },
+    "worker": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/WorkerInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "task_id",
+    "operation_id",
+    "operation",
+    "project_id",
+    "status",
+    "fingerprint",
+    "created_at",
+    "updated_at"
+  ],
+  "title": "TaskRecord",
+  "type": "object"
+}

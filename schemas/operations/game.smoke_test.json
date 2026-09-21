@@ -1,0 +1,43 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/game.smoke_test.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Play the kit's test bed headless and report its checks",
+  "properties": {
+    "clip_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Clip Id"
+    }
+  },
+  "title": "GameSmokeTestParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P1",
+    "modes": [],
+    "op_class": "read",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [
+      "unreal.editor",
+      "unreal.python",
+      "unreal.project"
+    ],
+    "required_targets": [
+      "bundle_id",
+      "asset_id"
+    ]
+  }
+}

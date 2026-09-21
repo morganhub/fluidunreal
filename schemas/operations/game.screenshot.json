@@ -1,0 +1,46 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/game.screenshot.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Render one off-screen frame and the share of it the character covers",
+  "properties": {
+    "height": {
+      "default": 360,
+      "maximum": 4096,
+      "minimum": 64,
+      "title": "Height",
+      "type": "integer"
+    },
+    "width": {
+      "default": 640,
+      "maximum": 4096,
+      "minimum": 64,
+      "title": "Width",
+      "type": "integer"
+    }
+  },
+  "title": "GameScreenshotParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P1",
+    "modes": [],
+    "op_class": "render",
+    "optional_dependencies": [
+      "unreal.gpu"
+    ],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [
+      "unreal.editor",
+      "unreal.python",
+      "unreal.project"
+    ],
+    "required_targets": [
+      "bundle_id",
+      "asset_id"
+    ]
+  }
+}

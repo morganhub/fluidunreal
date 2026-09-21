@@ -1,0 +1,22 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/game.package.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Cook and package the project (not implemented: this kit does not build your game)",
+  "properties": {},
+  "title": "NoParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P2",
+    "modes": [],
+    "op_class": "export",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

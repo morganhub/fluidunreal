@@ -1,0 +1,32 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/bundle.inspect.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Re-verify an accepted bundle and list what was imported from it",
+  "properties": {
+    "verify_hashes": {
+      "default": true,
+      "title": "Verify Hashes",
+      "type": "boolean"
+    }
+  },
+  "title": "BundleInspectParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P0",
+    "modes": [
+      "batch"
+    ],
+    "op_class": "read",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": [
+      "bundle_id"
+    ]
+  }
+}

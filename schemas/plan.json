@@ -1,0 +1,155 @@
+{
+  "$defs": {
+    "ErrorCode": {
+      "enum": [
+        "MISSING_DEPENDENCY",
+        "UNSUPPORTED_CAPABILITY",
+        "RIG_MAPPING_REQUIRED",
+        "SCENE_CONFLICT",
+        "PERMISSION_REQUIRED",
+        "BUDGET_EXCEEDED",
+        "TIMEOUT_UNKNOWN_STATE",
+        "VALIDATION_FAILED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "recovery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorRecord",
+      "type": "object"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/plan.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "available": {
+      "title": "Available",
+      "type": "boolean"
+    },
+    "backend": {
+      "title": "Backend",
+      "type": "string"
+    },
+    "blocking_errors": {
+      "items": {
+        "$ref": "#/$defs/ErrorRecord"
+      },
+      "title": "Blocking Errors",
+      "type": "array"
+    },
+    "budget": {
+      "additionalProperties": true,
+      "title": "Budget",
+      "type": "object"
+    },
+    "estimated_new_disk_mib": {
+      "minimum": 0,
+      "title": "Estimated New Disk Mib",
+      "type": "number"
+    },
+    "estimated_seconds": {
+      "minimum": 0,
+      "title": "Estimated Seconds",
+      "type": "number"
+    },
+    "lot": {
+      "title": "Lot",
+      "type": "string"
+    },
+    "op_class": {
+      "title": "Op Class",
+      "type": "string"
+    },
+    "operation": {
+      "title": "Operation",
+      "type": "string"
+    },
+    "operation_id": {
+      "title": "Operation Id",
+      "type": "string"
+    },
+    "permission_ok": {
+      "title": "Permission Ok",
+      "type": "boolean"
+    },
+    "resources": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Resources",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "steps": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Steps",
+      "type": "array"
+    },
+    "stop_conditions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Stop Conditions",
+      "type": "array"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "operation_id",
+    "operation",
+    "backend",
+    "op_class",
+    "lot",
+    "available",
+    "permission_ok",
+    "estimated_seconds",
+    "estimated_new_disk_mib"
+  ],
+  "title": "Plan",
+  "type": "object"
+}

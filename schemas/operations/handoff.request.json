@@ -1,0 +1,92 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/handoff.request.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Write a typed fluidblend request when the fix belongs in Blender",
+  "properties": {
+    "clip_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Clip Id"
+    },
+    "instance_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Instance Id"
+    },
+    "kind": {
+      "enum": [
+        "reexport_unreal",
+        "bake_rigid_limbs",
+        "create_clip",
+        "look_at_glb"
+      ],
+      "title": "Kind",
+      "type": "string"
+    },
+    "output_name": {
+      "anyOf": [
+        {
+          "pattern": "^[A-Za-z0-9._-]{1,80}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Output Name"
+    },
+    "recipe": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Recipe"
+    }
+  },
+  "required": [
+    "kind"
+  ],
+  "title": "HandoffRequestParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "host",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P1",
+    "modes": [],
+    "op_class": "write",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [
+      "fluidblend.kit"
+    ],
+    "required_targets": [
+      "bundle_id"
+    ]
+  }
+}

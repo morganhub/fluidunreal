@@ -1,0 +1,22 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/task.reconcile.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Conclude a task left in an unknown write state",
+  "properties": {},
+  "title": "NoParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": "task reconcile",
+    "input_paths": [],
+    "lot": "P0",
+    "modes": [],
+    "op_class": "write",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

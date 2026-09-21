@@ -1,0 +1,90 @@
+{
+  "$id": "https://fluidunreal.local/schemas/imported-asset.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One asset the editor really wrote, as read back from the content it created.",
+  "properties": {
+    "animations": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Animations",
+      "type": "array"
+    },
+    "asset_id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "bone_count": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Bone Count",
+      "type": "integer"
+    },
+    "bones_added_by_importer": {
+      "description": "The importer adds a proxy root: counted apart, never against the bundle",
+      "items": {
+        "type": "string"
+      },
+      "title": "Bones Added By Importer",
+      "type": "array"
+    },
+    "content_path": {
+      "minLength": 1,
+      "title": "Content Path",
+      "type": "string"
+    },
+    "skeletal_mesh": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Skeletal Mesh"
+    },
+    "skeleton": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Skeleton"
+    },
+    "sockets": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Sockets",
+      "type": "array"
+    },
+    "uassets": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "description": "Published path to sha256, verified before publication",
+      "title": "Uassets",
+      "type": "object"
+    },
+    "version": {
+      "minimum": 1,
+      "title": "Version",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "asset_id",
+    "version",
+    "content_path"
+  ],
+  "title": "ImportedAsset",
+  "type": "object"
+}

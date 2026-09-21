@@ -1,0 +1,607 @@
+{
+  "$defs": {
+    "AxisConvention": {
+      "additionalProperties": false,
+      "description": "Written down rather than assumed: the consumer reports the conversion it applied.",
+      "properties": {
+        "blender": {
+          "$ref": "#/$defs/AxisPair"
+        },
+        "gltf": {
+          "$ref": "#/$defs/AxisPair"
+        }
+      },
+      "required": [
+        "blender",
+        "gltf"
+      ],
+      "title": "AxisConvention",
+      "type": "object"
+    },
+    "AxisPair": {
+      "additionalProperties": false,
+      "properties": {
+        "forward": {
+          "maxLength": 4,
+          "minLength": 2,
+          "title": "Forward",
+          "type": "string"
+        },
+        "up": {
+          "maxLength": 4,
+          "minLength": 2,
+          "title": "Up",
+          "type": "string"
+        }
+      },
+      "required": [
+        "up",
+        "forward"
+      ],
+      "title": "AxisPair",
+      "type": "object"
+    },
+    "BundleClip": {
+      "additionalProperties": false,
+      "properties": {
+        "clip_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Clip Id",
+          "type": "string"
+        },
+        "contacts": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Contacts",
+          "type": "array"
+        },
+        "events": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Events",
+          "type": "array"
+        },
+        "frame_range": {
+          "$ref": "#/$defs/FrameRange"
+        },
+        "gltf_animation_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gltf Animation Name",
+          "type": "string"
+        },
+        "instance_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "loop": {
+          "default": false,
+          "title": "Loop",
+          "type": "boolean"
+        },
+        "measurements": {
+          "items": {
+            "additionalProperties": true,
+            "type": "object"
+          },
+          "title": "Measurements",
+          "type": "array"
+        },
+        "repetitions": {
+          "anyOf": [
+            {
+              "maximum": 100,
+              "minimum": 2,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Repetitions"
+        },
+        "root_motion": {
+          "default": "in_place",
+          "enum": [
+            "in_place",
+            "root_bone",
+            "object"
+          ],
+          "title": "Root Motion",
+          "type": "string"
+        },
+        "stride_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Stride M"
+        }
+      },
+      "required": [
+        "clip_id",
+        "instance_id",
+        "gltf_animation_name",
+        "frame_range"
+      ],
+      "title": "BundleClip",
+      "type": "object"
+    },
+    "BundleFile": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes"
+        },
+        "format": {
+          "anyOf": [
+            {
+              "enum": [
+                "glb",
+                "gltf",
+                "json",
+                "md",
+                "txt"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Format"
+        },
+        "path": {
+          "description": "POSIX, relative to the bundle folder",
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "Path",
+          "type": "string"
+        },
+        "role": {
+          "enum": [
+            "model",
+            "export_report",
+            "khronos_report",
+            "license",
+            "other"
+          ],
+          "title": "Role",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "role",
+        "path",
+        "sha256"
+      ],
+      "title": "BundleFile",
+      "type": "object"
+    },
+    "BundleInstance": {
+      "additionalProperties": false,
+      "properties": {
+        "armature": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Armature"
+        },
+        "asset_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "asset_version": {
+          "minimum": 1,
+          "title": "Asset Version",
+          "type": "integer"
+        },
+        "baked": {
+          "default": false,
+          "title": "Baked",
+          "type": "boolean"
+        },
+        "bone_count": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Bone Count",
+          "type": "integer"
+        },
+        "export_def_bones": {
+          "default": false,
+          "title": "Export Def Bones",
+          "type": "boolean"
+        },
+        "gltf_node_name": {
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Gltf Node Name",
+          "type": "string"
+        },
+        "grips": {
+          "additionalProperties": {
+            "items": {
+              "type": "number"
+            },
+            "type": "array"
+          },
+          "title": "Grips",
+          "type": "object"
+        },
+        "instance_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Instance Id",
+          "type": "string"
+        },
+        "kind": {
+          "default": "character",
+          "enum": [
+            "character",
+            "prop"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "license": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "License",
+          "type": "string"
+        },
+        "license_file": {
+          "maxLength": 400,
+          "minLength": 1,
+          "title": "License File",
+          "type": "string"
+        },
+        "reference_pose": {
+          "items": {
+            "$ref": "#/$defs/ReferenceBone"
+          },
+          "maxItems": 5,
+          "title": "Reference Pose",
+          "type": "array"
+        },
+        "rig_profile": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Rig Profile"
+        },
+        "skinned": {
+          "default": false,
+          "title": "Skinned",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "instance_id",
+        "asset_id",
+        "asset_version",
+        "license",
+        "license_file",
+        "gltf_node_name"
+      ],
+      "title": "BundleInstance",
+      "type": "object"
+    },
+    "BundleProducer": {
+      "additionalProperties": false,
+      "description": "Who made the bundle, from which project state. `external` means: wrapped, not produced here.",
+      "properties": {
+        "created_at": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Created At",
+          "type": "string"
+        },
+        "kit": {
+          "default": "fluidblend",
+          "enum": [
+            "fluidblend",
+            "external"
+          ],
+          "title": "Kit",
+          "type": "string"
+        },
+        "operation": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "Operation",
+          "type": "string"
+        },
+        "operation_id": {
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$",
+          "title": "Operation Id",
+          "type": "string"
+        },
+        "project_id": {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "title": "Project Id",
+          "type": "string"
+        },
+        "shot_id": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Shot Id"
+        },
+        "source_revision": {
+          "default": 0,
+          "minimum": 0,
+          "title": "Source Revision",
+          "type": "integer"
+        },
+        "version": {
+          "maxLength": 40,
+          "minLength": 1,
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "version",
+        "operation",
+        "operation_id",
+        "project_id",
+        "created_at"
+      ],
+      "title": "BundleProducer",
+      "type": "object"
+    },
+    "BundleValidation": {
+      "additionalProperties": false,
+      "description": "`not_run` is a result, not a failure — and never to be read as `passed`.",
+      "properties": {
+        "khronos": {
+          "default": "not_run",
+          "enum": [
+            "passed",
+            "failed",
+            "not_run"
+          ],
+          "title": "Khronos",
+          "type": "string"
+        },
+        "reimport_passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reimport Passed"
+        },
+        "skeleton_fidelity_max_error_m": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Skeleton Fidelity Max Error M"
+        }
+      },
+      "title": "BundleValidation",
+      "type": "object"
+    },
+    "Fps": {
+      "additionalProperties": false,
+      "description": "Rational frame rate (24/1, 30000/1001, ...).",
+      "properties": {
+        "denominator": {
+          "default": 1,
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "maximum": 1000000,
+          "minimum": 1,
+          "title": "Numerator",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "numerator"
+      ],
+      "title": "Fps",
+      "type": "object"
+    },
+    "FrameRange": {
+      "additionalProperties": false,
+      "description": "Canonical half-open interval `[start, end_exclusive)`.",
+      "properties": {
+        "end_exclusive": {
+          "maximum": 1000001,
+          "minimum": -100000,
+          "title": "End Exclusive",
+          "type": "integer"
+        },
+        "start": {
+          "maximum": 1000000,
+          "minimum": -100000,
+          "title": "Start",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "start",
+        "end_exclusive"
+      ],
+      "title": "FrameRange",
+      "type": "object"
+    },
+    "ReferenceBone": {
+      "additionalProperties": false,
+      "description": "World head of a deform bone at rest, in metres, Blender space (see `axis_convention`).",
+      "properties": {
+        "bone": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Bone",
+          "type": "string"
+        },
+        "head_m": {
+          "items": {
+            "type": "number"
+          },
+          "maxItems": 3,
+          "minItems": 3,
+          "title": "Head M",
+          "type": "array"
+        }
+      },
+      "required": [
+        "bone",
+        "head_m"
+      ],
+      "title": "ReferenceBone",
+      "type": "object"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/handoff-bundle.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "`handoff-bundle.json`, the contract between this kit and an engine-side kit.",
+  "properties": {
+    "axis_convention": {
+      "$ref": "#/$defs/AxisConvention"
+    },
+    "bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "clips": {
+      "items": {
+        "$ref": "#/$defs/BundleClip"
+      },
+      "title": "Clips",
+      "type": "array"
+    },
+    "files": {
+      "items": {
+        "$ref": "#/$defs/BundleFile"
+      },
+      "minItems": 1,
+      "title": "Files",
+      "type": "array"
+    },
+    "fps": {
+      "$ref": "#/$defs/Fps"
+    },
+    "instances": {
+      "items": {
+        "$ref": "#/$defs/BundleInstance"
+      },
+      "title": "Instances",
+      "type": "array"
+    },
+    "kind": {
+      "const": "handoff-bundle",
+      "default": "handoff-bundle",
+      "title": "Kind",
+      "type": "string"
+    },
+    "limits": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limits",
+      "type": "array"
+    },
+    "producer": {
+      "$ref": "#/$defs/BundleProducer"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "units": {
+      "const": "meters",
+      "default": "meters",
+      "title": "Units",
+      "type": "string"
+    },
+    "validation": {
+      "$ref": "#/$defs/BundleValidation"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "producer",
+    "fps",
+    "axis_convention",
+    "files"
+  ],
+  "title": "HandoffBundle",
+  "type": "object"
+}

@@ -1,0 +1,114 @@
+{
+  "$id": "https://fluidunreal.local/schemas/accepted-bundle.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "`bundles/<bundle_id>/accepted.json`: what was checked when the bundle came in.",
+  "properties": {
+    "accepted_at": {
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Accepted At",
+      "type": "string"
+    },
+    "bundle_id": {
+      "maxLength": 100,
+      "minLength": 3,
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "clips": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Clips",
+      "type": "array"
+    },
+    "files_verified": {
+      "minimum": 1,
+      "title": "Files Verified",
+      "type": "integer"
+    },
+    "instances": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Instances",
+      "type": "array"
+    },
+    "khronos": {
+      "default": "not_run",
+      "enum": [
+        "passed",
+        "failed",
+        "not_run"
+      ],
+      "title": "Khronos",
+      "type": "string"
+    },
+    "licences": {
+      "description": "A bundle without one is never accepted",
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Licences",
+      "type": "array"
+    },
+    "limits": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limits",
+      "type": "array"
+    },
+    "manifest_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Manifest Sha256",
+      "type": "string"
+    },
+    "producer_kit": {
+      "enum": [
+        "fluidblend",
+        "external"
+      ],
+      "title": "Producer Kit",
+      "type": "string"
+    },
+    "producer_version": {
+      "maxLength": 40,
+      "minLength": 1,
+      "title": "Producer Version",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source_path": {
+      "description": "Where it came from, for traceability only",
+      "minLength": 1,
+      "title": "Source Path",
+      "type": "string"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "accepted_at",
+    "source_path",
+    "manifest_sha256",
+    "producer_kit",
+    "producer_version",
+    "files_verified",
+    "licences"
+  ],
+  "title": "AcceptedBundle",
+  "type": "object"
+}

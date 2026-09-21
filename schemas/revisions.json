@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "RevisionRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "title": "Bytes",
+          "type": "integer"
+        },
+        "origin": {
+          "default": "kit",
+          "enum": [
+            "kit",
+            "external_accepted",
+            "init"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "path": {
+          "title": "Path",
+          "type": "string"
+        },
+        "revision": {
+          "minimum": 0,
+          "title": "Revision",
+          "type": "integer"
+        },
+        "sha256": {
+          "title": "Sha256",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        },
+        "updated_at": {
+          "title": "Updated At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "target",
+        "revision",
+        "path",
+        "sha256",
+        "bytes",
+        "updated_at"
+      ],
+      "title": "RevisionRecord",
+      "type": "object"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/revisions.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "revisions": {
+      "additionalProperties": {
+        "$ref": "#/$defs/RevisionRecord"
+      },
+      "title": "Revisions",
+      "type": "object"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "title": "RevisionsFile",
+  "type": "object"
+}

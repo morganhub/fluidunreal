@@ -1,0 +1,22 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/capabilities.list.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "List the capabilities last observed, without probing again",
+  "properties": {},
+  "title": "NoParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": "capabilities",
+    "input_paths": [],
+    "lot": "P0",
+    "modes": [],
+    "op_class": "read",
+    "optional_dependencies": [],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

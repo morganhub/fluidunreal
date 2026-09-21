@@ -1,0 +1,264 @@
+{
+  "operations": {
+    "asset.audit": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [
+        "unreal.gpu"
+      ],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [
+        "unreal.editor",
+        "unreal.python",
+        "unreal.project"
+      ],
+      "required_targets": [
+        "bundle_id",
+        "asset_id"
+      ]
+    },
+    "asset.import": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "asset_revision_and_reports",
+      "required_dependencies": [
+        "unreal.editor",
+        "unreal.python",
+        "unreal.project"
+      ],
+      "required_targets": [
+        "bundle_id"
+      ]
+    },
+    "bundle.accept": {
+      "cli_command": null,
+      "input_paths": [
+        "source_path"
+      ],
+      "modes": [
+        "batch"
+      ],
+      "optional_dependencies": [
+        "gltf.khronos_validator"
+      ],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "bundle.inspect": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [
+        "batch"
+      ],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": [
+        "bundle_id"
+      ]
+    },
+    "bundle.wrap": {
+      "cli_command": null,
+      "input_paths": [
+        "model_path",
+        "license_path"
+      ],
+      "modes": [
+        "batch"
+      ],
+      "optional_dependencies": [
+        "gltf.khronos_validator"
+      ],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "capabilities.list": {
+      "cli_command": "capabilities",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "environment.doctor": {
+      "cli_command": "doctor",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "game.package": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "game.screenshot": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [
+        "unreal.gpu"
+      ],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [
+        "unreal.editor",
+        "unreal.python",
+        "unreal.project"
+      ],
+      "required_targets": [
+        "bundle_id",
+        "asset_id"
+      ]
+    },
+    "game.smoke_test": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [
+        "unreal.editor",
+        "unreal.python",
+        "unreal.project"
+      ],
+      "required_targets": [
+        "bundle_id",
+        "asset_id"
+      ]
+    },
+    "handoff.request": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [
+        "fluidblend.kit"
+      ],
+      "required_targets": [
+        "bundle_id"
+      ]
+    },
+    "project.init": {
+      "cli_command": "init",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "project.inspect": {
+      "cli_command": "inspect",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "project.plan": {
+      "cli_command": "plan",
+      "input_paths": [
+        "request_path"
+      ],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "project.resume": {
+      "cli_command": "resume",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "retarget.mannequin": {
+      "cli_command": null,
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "task.cancel": {
+      "cli_command": "task cancel",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "task.reconcile": {
+      "cli_command": "task reconcile",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    },
+    "task.status": {
+      "cli_command": "task status",
+      "input_paths": [],
+      "modes": [],
+      "optional_dependencies": [],
+      "publication": "reports_and_artifacts",
+      "required_dependencies": [],
+      "required_targets": []
+    }
+  },
+  "schemas": [
+    "accepted-bundle",
+    "audit-report",
+    "capabilities",
+    "dependencies-lock",
+    "handoff-bundle",
+    "imported-asset",
+    "local-config",
+    "measurement",
+    "operation-request",
+    "operation-result",
+    "operations/asset.audit",
+    "operations/asset.import",
+    "operations/bundle.accept",
+    "operations/bundle.inspect",
+    "operations/bundle.wrap",
+    "operations/capabilities.list",
+    "operations/environment.doctor",
+    "operations/game.package",
+    "operations/game.screenshot",
+    "operations/game.smoke_test",
+    "operations/handoff.request",
+    "operations/project.init",
+    "operations/project.inspect",
+    "operations/project.plan",
+    "operations/project.resume",
+    "operations/retarget.mannequin",
+    "operations/task.cancel",
+    "operations/task.reconcile",
+    "operations/task.status",
+    "plan",
+    "project",
+    "revisions",
+    "task"
+  ]
+}

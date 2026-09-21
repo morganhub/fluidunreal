@@ -1,0 +1,54 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/asset.import.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Import a bundle into the Unreal project and publish it as a new version",
+  "properties": {
+    "asset_id": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Asset Id"
+    },
+    "destination_root": {
+      "default": "/Game/Fluid",
+      "pattern": "^/Game(/[A-Za-z0-9_]+)+$",
+      "title": "Destination Root",
+      "type": "string"
+    },
+    "replace_existing": {
+      "default": false,
+      "description": "Creates the next version; it never overwrites a published one",
+      "title": "Replace Existing",
+      "type": "boolean"
+    }
+  },
+  "title": "AssetImportParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P0",
+    "modes": [],
+    "op_class": "write",
+    "optional_dependencies": [],
+    "publication": "asset_revision_and_reports",
+    "required_dependencies": [
+      "unreal.editor",
+      "unreal.python",
+      "unreal.project"
+    ],
+    "required_targets": [
+      "bundle_id"
+    ]
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "$id": "https://fluidunreal.local/schemas/local-config.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Machine paths. Never committed, never part of a revision.",
+  "properties": {
+    "ddc_path": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Absolute path outside the root. A junction inside it is refused by the path guard",
+      "title": "Ddc Path"
+    },
+    "gltf_validator_executable": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gltf Validator Executable"
+    },
+    "unreal_editor_executable": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Unreal Editor Executable"
+    },
+    "unreal_startup_timeout_s": {
+      "default": 600,
+      "description": "The first open of a project compiles shaders: minutes, once per DDC",
+      "maximum": 7200,
+      "minimum": 30,
+      "title": "Unreal Startup Timeout S",
+      "type": "integer"
+    }
+  },
+  "title": "LocalConfig",
+  "type": "object"
+}

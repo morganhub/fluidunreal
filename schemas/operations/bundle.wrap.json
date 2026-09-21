@@ -1,0 +1,72 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/bundle.wrap.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Wrap a third-party GLB into a bundle; a readable licence is required",
+  "properties": {
+    "bundle_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{2,99}$",
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "fps_denominator": {
+      "default": 1,
+      "maximum": 1000000,
+      "minimum": 1,
+      "title": "Fps Denominator",
+      "type": "integer"
+    },
+    "fps_numerator": {
+      "default": 30,
+      "maximum": 1000000,
+      "minimum": 1,
+      "title": "Fps Numerator",
+      "type": "integer"
+    },
+    "license": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "License",
+      "type": "string"
+    },
+    "license_path": {
+      "minLength": 1,
+      "title": "License Path",
+      "type": "string"
+    },
+    "model_path": {
+      "description": "A .glb; FBX is not supported in P0/P1",
+      "minLength": 1,
+      "title": "Model Path",
+      "type": "string"
+    }
+  },
+  "required": [
+    "model_path",
+    "license_path",
+    "license",
+    "bundle_id"
+  ],
+  "title": "BundleWrapParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": true,
+    "backend": "host",
+    "cli_command": null,
+    "input_paths": [
+      "model_path",
+      "license_path"
+    ],
+    "lot": "P0",
+    "modes": [
+      "batch"
+    ],
+    "op_class": "write",
+    "optional_dependencies": [
+      "gltf.khronos_validator"
+    ],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [],
+    "required_targets": []
+  }
+}

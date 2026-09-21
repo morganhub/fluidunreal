@@ -1,0 +1,38 @@
+{
+  "$id": "https://fluidunreal.local/schemas/operations/asset.audit.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Measure what the engine wrote: scale, axes, animation length, root motion, sockets",
+  "properties": {
+    "render_reference_poses": {
+      "default": false,
+      "description": "Needs a usable GPU; without one the images are not_run",
+      "title": "Render Reference Poses",
+      "type": "boolean"
+    }
+  },
+  "title": "AssetAuditParams",
+  "type": "object",
+  "x-fluidunreal": {
+    "available": false,
+    "backend": "unreal",
+    "cli_command": null,
+    "input_paths": [],
+    "lot": "P0",
+    "modes": [],
+    "op_class": "read",
+    "optional_dependencies": [
+      "unreal.gpu"
+    ],
+    "publication": "reports_and_artifacts",
+    "required_dependencies": [
+      "unreal.editor",
+      "unreal.python",
+      "unreal.project"
+    ],
+    "required_targets": [
+      "bundle_id",
+      "asset_id"
+    ]
+  }
+}

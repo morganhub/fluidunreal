@@ -62,7 +62,10 @@ def pie_character(notes):
     duplicate. Every check has to resolve the PIE actor first or it measures a statue.
     """
     for label, call in (
-        ("UnrealEditorSubsystem", lambda: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world()),
+        (
+            "UnrealEditorSubsystem",
+            lambda: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world(),
+        ),
         ("EditorLevelLibrary", lambda: unreal.EditorLevelLibrary.get_game_world()),
     ):
         try:

@@ -1,0 +1,170 @@
+{
+  "$defs": {
+    "Measurement": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "additionalProperties": true,
+          "title": "Detail",
+          "type": "object"
+        },
+        "expected": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected"
+        },
+        "kind": {
+          "enum": [
+            "scale_check",
+            "axis_check",
+            "anim_length",
+            "root_motion_travel",
+            "socket_position",
+            "bone_count",
+            "rendered_share"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "name": {
+          "description": "What was measured, e.g. the bone",
+          "maxLength": 200,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "observed": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Observed"
+        },
+        "passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None means it could not be measured: never a pass, never a failure",
+          "title": "Passed"
+        },
+        "space": {
+          "default": "world",
+          "enum": [
+            "world",
+            "component",
+            "local",
+            "frame",
+            "none"
+          ],
+          "title": "Space",
+          "type": "string"
+        },
+        "tolerance": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Tolerance"
+        },
+        "unit": {
+          "default": "cm",
+          "enum": [
+            "cm",
+            "m",
+            "frames",
+            "seconds",
+            "count",
+            "share"
+          ],
+          "title": "Unit",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "name"
+      ],
+      "title": "Measurement",
+      "type": "object"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/audit-report.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "asset_id": {
+      "pattern": "^[a-z0-9][a-z0-9._-]{0,63}$",
+      "title": "Asset Id",
+      "type": "string"
+    },
+    "bundle_id": {
+      "maxLength": 100,
+      "minLength": 3,
+      "title": "Bundle Id",
+      "type": "string"
+    },
+    "engine": {
+      "maxLength": 120,
+      "minLength": 1,
+      "title": "Engine",
+      "type": "string"
+    },
+    "images": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Images",
+      "type": "array"
+    },
+    "limits": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Limits",
+      "type": "array"
+    },
+    "measurements": {
+      "items": {
+        "$ref": "#/$defs/Measurement"
+      },
+      "title": "Measurements",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "bundle_id",
+    "asset_id",
+    "engine"
+  ],
+  "title": "AuditReport",
+  "type": "object"
+}

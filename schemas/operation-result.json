@@ -1,0 +1,256 @@
+{
+  "$defs": {
+    "Artifact": {
+      "additionalProperties": false,
+      "properties": {
+        "bytes": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Bytes"
+        },
+        "kind": {
+          "description": "blend | frames | video | glb | report | image | json | checkpoint",
+          "title": "Kind",
+          "type": "string"
+        },
+        "metrics": {
+          "additionalProperties": true,
+          "title": "Metrics",
+          "type": "object"
+        },
+        "path": {
+          "description": "Path relative to the project after publication, relative to the task folder before",
+          "title": "Path",
+          "type": "string"
+        },
+        "sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sha256"
+        }
+      },
+      "required": [
+        "kind",
+        "path"
+      ],
+      "title": "Artifact",
+      "type": "object"
+    },
+    "ChangedEntity": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "enum": [
+            "created",
+            "modified",
+            "deleted",
+            "versioned"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "description": "shot | instance | clip | asset | file | action",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "change"
+      ],
+      "title": "ChangedEntity",
+      "type": "object"
+    },
+    "ErrorCode": {
+      "enum": [
+        "MISSING_DEPENDENCY",
+        "UNSUPPORTED_CAPABILITY",
+        "RIG_MAPPING_REQUIRED",
+        "SCENE_CONFLICT",
+        "PERMISSION_REQUIRED",
+        "BUDGET_EXCEEDED",
+        "TIMEOUT_UNKNOWN_STATE",
+        "VALIDATION_FAILED",
+        "INTERNAL_ERROR"
+      ],
+      "title": "ErrorCode",
+      "type": "string"
+    },
+    "ErrorRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "code": {
+          "$ref": "#/$defs/ErrorCode"
+        },
+        "details": {
+          "additionalProperties": true,
+          "title": "Details",
+          "type": "object"
+        },
+        "message": {
+          "title": "Message",
+          "type": "string"
+        },
+        "recovery": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Recovery"
+        }
+      },
+      "required": [
+        "code",
+        "message"
+      ],
+      "title": "ErrorRecord",
+      "type": "object"
+    },
+    "OperationStatus": {
+      "enum": [
+        "planned",
+        "queued",
+        "running",
+        "validating",
+        "succeeded",
+        "failed",
+        "blocked",
+        "unknown",
+        "cancelled"
+      ],
+      "title": "OperationStatus",
+      "type": "string"
+    }
+  },
+  "$id": "https://fluidunreal.local/schemas/operation-result.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "Structured response of an operation (§6.5 of the specification).",
+  "properties": {
+    "artifacts": {
+      "items": {
+        "$ref": "#/$defs/Artifact"
+      },
+      "title": "Artifacts",
+      "type": "array"
+    },
+    "changed_entities": {
+      "items": {
+        "$ref": "#/$defs/ChangedEntity"
+      },
+      "title": "Changed Entities",
+      "type": "array"
+    },
+    "checkpoint_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Checkpoint Id"
+    },
+    "errors": {
+      "items": {
+        "$ref": "#/$defs/ErrorRecord"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "metrics": {
+      "additionalProperties": true,
+      "title": "Metrics",
+      "type": "object"
+    },
+    "new_revision": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "New Revision"
+    },
+    "next_safe_actions": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Next Safe Actions",
+      "type": "array"
+    },
+    "operation": {
+      "title": "Operation",
+      "type": "string"
+    },
+    "operation_id": {
+      "title": "Operation Id",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "status": {
+      "$ref": "#/$defs/OperationStatus"
+    },
+    "task_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Task Id"
+    },
+    "warnings": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Warnings",
+      "type": "array"
+    }
+  },
+  "required": [
+    "operation_id",
+    "operation",
+    "status"
+  ],
+  "title": "OperationResult",
+  "type": "object"
+}
