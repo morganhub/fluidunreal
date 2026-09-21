@@ -1,0 +1,63 @@
+[project]
+name = "fluidunreal"
+version = "0.1.0.dev0"
+description = "Local Unreal Engine 5 import kit drivable by an AI: pluggable skill, tested Python engine, measured evidence."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.13,<3.14"
+authors = [{ name = "Morgan Vincent" }]
+dependencies = [
+    "pydantic>=2.12,<3",
+    "filelock>=3.20",
+    "fluidblend>=0.6.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/morganhub/fluidunreal"
+Repository = "https://github.com/morganhub/fluidunreal"
+Changelog = "https://github.com/morganhub/fluidunreal/blob/main/CHANGELOG.md"
+
+[project.scripts]
+fluidunreal = "fluidunreal.cli:main"
+
+# The reusable core comes from the sibling kit, pinned to a published tag. Its docs/architecture.md
+# names the modules that may be imported and promises they change only with a CHANGELOG entry
+# marked "breaking for fluidunreal".
+[tool.uv.sources]
+fluidblend = { git = "https://github.com/morganhub/fluidblend", tag = "v0.6.0" }
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "ruff>=0.9",
+]
+
+[build-system]
+requires = ["uv_build>=0.9.0,<0.14.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "fluidunreal"
+module-root = "src"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+    "unreal: requires the real locked Unreal Engine (marked not_run when it is missing)",
+    "acceptance: real acceptance scenarios U01-U14",
+    "slow: long import or render",
+]
+addopts = "-ra"
+
+[tool.ruff]
+line-length = 110
+target-version = "py313"
+src = ["src", "unreal_runtime", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S110", "S112"]
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S"]
+"scripts/lot0/**" = ["S", "B", "E", "F", "UP"]
