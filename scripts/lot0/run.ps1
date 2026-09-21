@@ -80,16 +80,20 @@ function Invoke-Proof {
     $stdout = Join-Path $outDir "$Name.stdout.txt"
     Remove-Item $report, $log, $stdout -ErrorAction SilentlyContinue
 
-    $arguments = @($testBed)
+    $arguments = @("`"$testBed`"")
     if ($Commandlet) {
-        $arguments += @('-run=pythonscript', "-script=$Script")
+        $arguments += @('-run=pythonscript', "`"-script=$Script`"")
     }
     else {
-        $arguments += @("-ExecCmds=py `"$Script`"")
+        # The whole value is one token and must reach the engine quoted. `Start-Process
+        # -ArgumentList` joins an array with spaces and quotes nothing, so the engine split this on
+        # the space and ran a bare `py` that did nothing: measured on 5.8.2, the editor then idles
+        # until the timeout without a single error line. The quotes are written here on purpose.
+        $arguments += @("`"-ExecCmds=py $Script`"")
     }
     $arguments += @(
         '-unattended', '-nopause', '-nosplash', '-NoSound',
-        '-stdout', '-FullStdOutLogOutput', "-abslog=$log"
+        '-stdout', '-FullStdOutLogOutput', "`"-abslog=$log`""
     ) + $ExtraArgs
 
     $previous = @{}

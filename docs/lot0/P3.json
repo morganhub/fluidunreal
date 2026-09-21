@@ -1,0 +1,218 @@
+{
+  "aborted": null,
+  "checks": {
+    "back_to_idle": {
+      "detail": "no idle state in the lot 0 bed: not measured",
+      "passed": null
+    },
+    "character_moves": {
+      "detail": {
+        "delta_x_cm": 355.8995250979693
+      },
+      "passed": true
+    },
+    "character_spawned": {
+      "detail": {
+        "in_pie_world": true
+      },
+      "passed": true
+    },
+    "holds_prop": {
+      "detail": "attachment is qualified by the kit, not by lot 0",
+      "passed": null
+    },
+    "idle_plays_nothing": {
+      "detail": "no idle clip in the lot 0 bundle: not measured",
+      "passed": null
+    },
+    "map_loaded": {
+      "detail": "PIE world obtained",
+      "passed": true
+    },
+    "pickup_empty": {
+      "detail": "attachment is qualified by the kit, not by lot 0",
+      "passed": null
+    },
+    "reaches_pickup": {
+      "detail": {
+        "closest_cm": 0.2746824222586213,
+        "note": "closest approach, not the final spot"
+      },
+      "passed": true
+    },
+    "skeleton_bone_count": {
+      "detail": {
+        "added_by_importer": [
+          "CustomRig_Vitruvian_ProxyTrueRootJoint"
+        ],
+        "expected": 188,
+        "got": 189
+      },
+      "passed": true
+    },
+    "stands_on_floor": {
+      "detail": {
+        "bottom_z": 2.15,
+        "half_height": 88.0,
+        "tolerance_cm": 3.0,
+        "why": "the movement component parks the capsule just above the floor"
+      },
+      "passed": true
+    },
+    "walk_clip_found": {
+      "detail": {
+        "played_via": "play_animation"
+      },
+      "passed": true
+    },
+    "walk_clip_moves_bones": {
+      "detail": {
+        "between_ticks": [
+          30,
+          45
+        ],
+        "bone": "DEF-big_toe_02_L"
+      },
+      "passed": true
+    },
+    "walk_plays_looping": {
+      "detail": {
+        "api": "play_animation"
+      },
+      "passed": true
+    },
+    "wall_stops_it": {
+      "detail": {
+        "peak_x": 355.9,
+        "wall_x": 400.0
+      },
+      "passed": true
+    }
+  },
+  "engine": "5.8.2-56702186+++UE5+Release-5.8",
+  "failed_checks": [],
+  "headless": true,
+  "not_run_checks": [
+    "back_to_idle",
+    "holds_prop",
+    "idle_plays_nothing",
+    "pickup_empty"
+  ],
+  "notes": [
+    "the clip plays through play_animation",
+    "PIE starters available: editor_play_simulate, editor_request_begin_play, editor_request_end_play, is_in_play_in_editor",
+    "PIE started with editor_request_begin_play",
+    "UnrealEditorSubsystem found 1 character(s): Character_UAID_00D8619FE906D00303_1091879610 at <Struct 'Vector' (0x000001FD423EFEE0) {x: 0.000000, y: 0.000000, z: 90.150000}> mesh=True",
+    "the PIE character was resolved through UnrealEditorSubsystem: Character_UAID_00D8619FE906D00303_1091879610",
+    "Character_UAID_00D8619FE906D00303_1091879610 possessed by PlayerController_0",
+    "the clip plays through play_animation"
+  ],
+  "passed": true,
+  "played_via": "play_animation",
+  "proof": "P3",
+  "started_with": "editor_request_begin_play",
+  "ticks": 180,
+  "trace": [
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 1,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 0.0,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 2,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 0.0,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 5,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 0.0,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 10,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 0.0,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 30,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 0.0,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 60,
+      "velocity_x": 495.35,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 61.97,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 90,
+      "velocity_x": 600.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 209.73,
+      "z": 130.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 120,
+      "velocity_x": 98.46,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 355.57,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 150,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 355.9,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 151,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 355.9,
+      "z": 90.15
+    },
+    {
+      "name": "Character_UAID_00D8619FE906D00303_1091879610",
+      "tick": 180,
+      "velocity_x": 0.0,
+      "velocity_z": 0.0,
+      "world_seconds": null,
+      "x": 355.9,
+      "z": 90.15
+    }
+  ],
+  "verdict": "10 measured and passed, 0 failed, 4 not measured by this bed",
+  "wall_time_ms": 2984
+}

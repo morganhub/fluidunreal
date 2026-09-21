@@ -1,0 +1,18 @@
+{
+  "ceiling": 0.4,
+  "engine": "5.8.2-56702186+++UE5+Release-5.8",
+  "frames": {
+    "with_character": "C:/Tafor/Projet/skills/fluidunreal/scripts/lot0/TestBed/Saved/Screenshots\\p4-with-character.png",
+    "without_character": "C:/Tafor/Projet/skills/fluidunreal/scripts/lot0/TestBed/Saved/Screenshots\\p4-without-character.png"
+  },
+  "notes": [
+    "the default pawn DefaultPawn_0 is removed from the bed",
+    "the view is aimed at CameraActor_UAID_00D8619FE906D00303_1112157610",
+    "hidden for the negative control: SkeletalMeshActor_UAID_00D8619FE906D00303_1112179611",
+    "not_run: 69.3% of the frame differs, above the 40% ceiling. The two frames do not show the same scene, so the share measures nothing about the character. Open both PNGs before believing any number here"
+  ],
+  "passed": null,
+  "proof": "P4",
+  "rendered_share": 0.69343,
+  "threshold": 0.01
+}

@@ -6,9 +6,11 @@ hashed, typed manifest), imports it into an Unreal project through the editor on
 **measures** what the engine really wrote, plays it in its own test bed, renders one frame, and
 publishes its evidence. Windows 11 only.
 
-Status: **lot 0, blocked on the engine.** The reference bundle and the five probes are ready; no line of `src/` is written until the five feasibility proofs have run
-on a real engine and their raw output is recorded in [docs/lot0/](docs/lot0/). Unreal Engine is not
-yet installed on the reference machine. Nothing below is claimed as working.
+Status: **lot 0 done, on Unreal Engine 5.8.2.** Four of the five feasibility proofs pass against the
+real engine; the fifth, the off-screen frame, renders but its coverage measurement is refused as
+untrustworthy and stays `not_run`. Raw output in [docs/lot0/](docs/lot0/), findings in
+[docs/compatibility-matrix.md](docs/compatibility-matrix.md). No line of `src/` is written yet:
+lot 1 starts from these measurements.
 
 ## What it will do
 

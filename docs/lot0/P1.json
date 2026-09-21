@@ -1,0 +1,42 @@
+{
+  "argv": [
+    "C:\\Tafor\\Projet\\skills\\fluidunreal\\scripts\\lot0\\p1_probe.py"
+  ],
+  "engine": {
+    "engine_directory": "../../../Engine/",
+    "engine_version": "5.8.2-56702186+++UE5+Release-5.8",
+    "is_editor": true,
+    "project_directory": "../../../../../../Tafor/Projet/skills/fluidunreal/scripts/lot0/TestBed/",
+    "project_file": "C:/Tafor/Projet/skills/fluidunreal/scripts/lot0/TestBed/TestBed.uproject"
+  },
+  "platform": "Windows-10-10.0.26200-SP0",
+  "plugins": [],
+  "probe_seconds": 0.094,
+  "proof": "P1",
+  "python": "3.11.8 (tags/v3.11.8:db85d51, Feb  6 2024, 22:03:32) [MSC v.1937 64 bit (AMD64)]",
+  "python_executable": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
+  "unreal_classes": {
+    "AnimationLibrary": true,
+    "AssetImportTask": true,
+    "AssetToolsHelpers": true,
+    "AutomationLibrary": true,
+    "DataAssetFactory": true,
+    "EditorAssetLibrary": true,
+    "EditorLevelLibrary": true,
+    "GLTFImportOptions": false,
+    "InterchangeAssetImportData": true,
+    "InterchangeGenericAnimationPipeline": true,
+    "InterchangeGenericAssetsPipeline": true,
+    "InterchangeGenericMeshPipeline": true,
+    "InterchangeManager": true,
+    "InterchangeSourceData": true,
+    "LevelEditorSubsystem": true,
+    "SkeletalMeshSocket": true
+  },
+  "unreal_functions": {
+    "log": true,
+    "log_error": true,
+    "register_slate_post_tick_callback": true,
+    "unregister_slate_post_tick_callback": true
+  }
+}

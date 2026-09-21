@@ -19,6 +19,15 @@ STAGING = "/Game/Lot0/P2"
 CM_PER_M = 100.0
 
 
+def unreal_bone_name(blender_name):
+    """Unreal cannot hold a dot in a bone name: `DEF-big_toe.02.L` arrives as `DEF-big_toe_02_L`.
+
+    Measured on 5.8.2, not assumed. The kit must map names, not compare them raw, or every
+    reference-pose lookup silently misses and the scale check reports `not_run` forever.
+    """
+    return blender_name.replace(".", "_")
+
+
 def read_bundle():
     folder = os.environ["FLUIDUNREAL_LOT0_BUNDLE"]
     with open(os.path.join(folder, "handoff-bundle.json"), encoding="utf-8") as handle:
@@ -33,7 +42,8 @@ def build_task(source):
     task.filename = source
     task.destination_path = STAGING
     task.automated = True
-    task.save = False
+    # The assets must survive this editor: P3 opens a fresh one and loads them by path.
+    task.save = True
     task.replace_existing = True
     notes = []
     try:
@@ -50,10 +60,21 @@ def build_task(source):
                 section.set_editor_property(prop, value)
             except Exception as exc:  # noqa: BLE001
                 notes.append(f"{holder}.{prop} not settable: {exc}")
+        # Two ways to hand a pipeline over. The first run showed materials and a PhysicsAsset being
+        # created anyway, so whether either actually takes is exactly what this proof must settle.
+        attached = []
         try:
             task.set_editor_property("options", pipeline)
+            attached.append("task.options")
         except Exception as exc:  # noqa: BLE001
             notes.append(f"task.options rejected the pipeline: {exc}")
+        for holder in ("pipelines", "override_pipelines"):
+            try:
+                task.set_editor_property(holder, [pipeline])
+                attached.append(f"task.{holder}")
+            except Exception as exc:  # noqa: BLE001
+                notes.append(f"task.{holder} unavailable: {exc}")
+        notes.append(f"pipeline attached through: {attached or 'nothing'}")
     except AttributeError as exc:
         notes.append(f"InterchangeGenericAssetsPipeline unavailable: {exc}")
     return task, notes
@@ -106,7 +127,6 @@ def measure_skeleton(assets, bundle, notes):
             break
     else:
         notes.append("no setter found for the skeletal mesh on the component")
-    names = [str(n) for n in component.get_all_socket_names()] if hasattr(component, "get_all_socket_names") else []
     try:
         bone_count = component.get_num_bones()
         bones = [str(component.get_bone_name(i)) for i in range(bone_count)]
@@ -114,23 +134,39 @@ def measure_skeleton(assets, bundle, notes):
         notes.append(f"bone enumeration unavailable: {exc}")
         bone_count, bones = None, []
 
+    def bone_world_z(name):
+        """5.8.2 has no `get_bone_location`; bones are exposed as sockets, so read them that way."""
+        for getter, label in (
+            ("get_socket_location", "socket"),
+            ("get_bone_transform", "transform"),
+        ):
+            call = getattr(component, getter, None)
+            if call is None:
+                continue
+            try:
+                value = call(name)
+                return (value.translation.z if label == "transform" else value.z), getter
+            except Exception as exc:  # noqa: BLE001
+                notes.append(f"{getter}({name}) failed: {exc}")
+        return None, None
+
     checks = []
     instance = (bundle.get("instances") or [{}])[0]
     for reference in instance.get("reference_pose", []):
-        bone = reference["bone"]
+        blender_bone = reference["bone"]
+        bone = unreal_bone_name(blender_bone)
         expected_cm = reference["head_m"][2] * CM_PER_M
-        observed = None
+        observed, via = None, None
         if bone in bones:
-            try:
-                observed = component.get_bone_location(bone).z
-            except Exception as exc:  # noqa: BLE001
-                notes.append(f"bone location unavailable for {bone}: {exc}")
+            observed, via = bone_world_z(bone)
         else:
-            notes.append(f"reference bone {bone} is not in the imported skeleton")
+            notes.append(f"reference bone {blender_bone} (as {bone}) is not in the imported skeleton")
         checks.append(
             {
                 "kind": "scale_check",
-                "bone": bone,
+                "bone": blender_bone,
+                "unreal_bone": bone,
+                "read_with": via,
                 "space": "world",
                 "unit": "cm",
                 "expected": round(expected_cm, 3),
@@ -139,8 +175,20 @@ def measure_skeleton(assets, bundle, notes):
                 "passed": None if observed is None else abs(observed - expected_cm) <= 1.0,
             }
         )
+    expected_count = instance.get("bone_count")
+    extra = [b for b in bones if b.lower().endswith("proxytruerootjoint")]
+    if expected_count is not None and bone_count == expected_count + len(extra) and extra:
+        notes.append(
+            f"the importer added {extra} on top of the bundle's {expected_count} bones: "
+            "the audit must count the bundle's bones, not the engine's total"
+        )
     actor.destroy_actor()
-    return {"bone_count": bone_count, "bones_sampled": bones[:10], "sockets": names, "scale_checks": checks}
+    return {
+        "bone_count": bone_count,
+        "added_by_importer": extra,
+        "bones_sampled": bones[:10],
+        "scale_checks": checks,
+    }
 
 
 def measure_animations(assets, bundle, notes):
@@ -156,7 +204,14 @@ def measure_animations(assets, bundle, notes):
             except Exception as exc:  # noqa: BLE001
                 facts[label] = None
                 notes.append(f"{entry['name']}.{prop} unavailable: {exc}")
-        clip = next((c for name, c in clips.items() if name.endswith(entry["name"])), None)
+        # The importer names the sequence after the file, not after the glTF animation, so match on
+        # the file stem rather than on the animation name. Recorded because it decides how
+        # `asset.import` renames things: `A_<asset_id>_<clip_id>` cannot be derived from the
+        # imported name alone when a GLB carries several clips.
+        clip = next((c for name, c in clips.items() if entry["name"].startswith(name.split(".")[0])), None)
+        if clip is None and len(clips) == 1:
+            clip = next(iter(clips.values()))
+            facts["matched_by"] = "the GLB carries a single clip"
         if clip:
             expected = clip["frame_range"]["end_exclusive"] - clip["frame_range"]["start"]
             facts["expected_frames"] = expected
@@ -179,6 +234,9 @@ def main():
     import_seconds = round(time.monotonic() - import_started, 3)
 
     assets = created_assets(task)
+    saved = unreal.EditorAssetLibrary.save_directory(STAGING, only_if_is_dirty=False, recursive=True)
+    if not saved:
+        notes.append("save_directory reported nothing saved: the next proof may find no assets")
     report = {
         "proof": "P2",
         "source": source,

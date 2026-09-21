@@ -1,0 +1,129 @@
+{
+  "animations": [
+    {
+      "expected_frames": 48,
+      "expected_seconds": 2.0,
+      "frames": 47,
+      "frames_within_one": true,
+      "matched_by": "the GLB carries a single clip",
+      "name": "vitruvian-walk_Anim",
+      "path": "/Game/Lot0/P2/vitruvian-walk/SkeletalMeshes/vitruvian-walk_Anim.vitruvian-walk_Anim",
+      "seconds": 1.9583333730697632
+    }
+  ],
+  "assets": [
+    {
+      "class": "Skeleton",
+      "name": "vitruvian-walk_Skeleton",
+      "path": "/Game/Lot0/P2/vitruvian-walk/SkeletalMeshes/vitruvian-walk_Skeleton.vitruvian-walk_Skeleton"
+    },
+    {
+      "class": "SkeletalMesh",
+      "name": "vitruvian-walk",
+      "path": "/Game/Lot0/P2/vitruvian-walk/SkeletalMeshes/vitruvian-walk.vitruvian-walk"
+    },
+    {
+      "class": "PhysicsAsset",
+      "name": "vitruvian-walk_PhysicsAsset",
+      "path": "/Game/Lot0/P2/vitruvian-walk/SkeletalMeshes/vitruvian-walk_PhysicsAsset.vitruvian-walk_PhysicsAsset"
+    },
+    {
+      "class": "AnimSequence",
+      "name": "vitruvian-walk_Anim",
+      "path": "/Game/Lot0/P2/vitruvian-walk/SkeletalMeshes/vitruvian-walk_Anim.vitruvian-walk_Anim"
+    }
+  ],
+  "bundle_id": "fx-export-unreal",
+  "engine_version": "5.8.2-56702186+++UE5+Release-5.8",
+  "expected_bone_count": 188,
+  "import_seconds": 5.812,
+  "notes": [
+    "task.pipelines unavailable: AssetImportTask: Failed to find property 'pipelines' for attribute 'pipelines' on 'AssetImportTask'",
+    "task.override_pipelines unavailable: AssetImportTask: Failed to find property 'override_pipelines' for attribute 'override_pipelines' on 'AssetImportTask'",
+    "pipeline attached through: ['task.options']",
+    "the importer added ['CustomRig_Vitruvian_ProxyTrueRootJoint'] on top of the bundle's 188 bones: the audit must count the bundle's bones, not the engine's total"
+  ],
+  "proof": "P2",
+  "skeleton": {
+    "added_by_importer": [
+      "CustomRig_Vitruvian_ProxyTrueRootJoint"
+    ],
+    "bone_count": 189,
+    "bones_sampled": [
+      "CustomRig_Vitruvian_ProxyTrueRootJoint",
+      "DEF-thigh_L",
+      "DEF-thigh_L_001",
+      "DEF-shin_L",
+      "DEF-shin_L_001",
+      "DEF-foot_L",
+      "DEF-toe_L",
+      "DEF-knee_L",
+      "DEF-thigh_R",
+      "DEF-thigh_R_001"
+    ],
+    "scale_checks": [
+      {
+        "bone": "DEF-big_toe.02.L",
+        "expected": 1.539,
+        "kind": "scale_check",
+        "observed": 1.539,
+        "passed": true,
+        "read_with": "get_socket_location",
+        "space": "world",
+        "tolerance": 1.0,
+        "unit": "cm",
+        "unreal_bone": "DEF-big_toe_02_L"
+      },
+      {
+        "bone": "DEF-foot.L",
+        "expected": 9.311,
+        "kind": "scale_check",
+        "observed": 9.311,
+        "passed": true,
+        "read_with": "get_socket_location",
+        "space": "world",
+        "tolerance": 1.0,
+        "unit": "cm",
+        "unreal_bone": "DEF-foot_L"
+      },
+      {
+        "bone": "DEF-forehead.R",
+        "expected": 169.285,
+        "kind": "scale_check",
+        "observed": 169.285,
+        "passed": true,
+        "read_with": "get_socket_location",
+        "space": "world",
+        "tolerance": 1.0,
+        "unit": "cm",
+        "unreal_bone": "DEF-forehead_R"
+      },
+      {
+        "bone": "DEF-hand.L",
+        "expected": 104.723,
+        "kind": "scale_check",
+        "observed": 104.723,
+        "passed": true,
+        "read_with": "get_socket_location",
+        "space": "world",
+        "tolerance": 1.0,
+        "unit": "cm",
+        "unreal_bone": "DEF-hand_L"
+      },
+      {
+        "bone": "DEF-spine",
+        "expected": 90.035,
+        "kind": "scale_check",
+        "observed": 90.036,
+        "passed": true,
+        "read_with": "get_socket_location",
+        "space": "world",
+        "tolerance": 1.0,
+        "unit": "cm",
+        "unreal_bone": "DEF-spine"
+      }
+    ]
+  },
+  "source": "C:\\Tafor\\Projet\\skills\\fluidunreal\\fixtures\\vitruvian-walk-unreal\\vitruvian-walk.glb",
+  "total_seconds": 5.984
+}

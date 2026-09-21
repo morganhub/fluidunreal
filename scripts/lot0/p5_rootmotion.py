@@ -20,15 +20,37 @@ TOLERANCE_CM = 2.0
 
 
 def root_bone_name(anim, notes):
+    """Bone 0 of the skeleton, not the first animation track.
+
+    Measured: the first track was `def-thigh_l`, a thigh that swings 57.5 cm during a walk. Reading
+    it as root travel would have reported an in-place clip as travelling half a metre.
+    """
+    mesh_path = os.environ.get("FLUIDUNREAL_LOT0_MESH")
+    if mesh_path:
+        try:
+            mesh = unreal.EditorAssetLibrary.load_asset(mesh_path)
+            actor = unreal.EditorLevelLibrary.spawn_actor_from_class(
+                unreal.SkeletalMeshActor, unreal.Vector(0.0, 0.0, 0.0), unreal.Rotator(0.0, 0.0, 0.0)
+            )
+            component = actor.skeletal_mesh_component
+            for setter in ("set_skeletal_mesh_asset", "set_skeletal_mesh"):
+                if hasattr(component, setter):
+                    getattr(component, setter)(mesh)
+                    break
+            name = str(component.get_bone_name(0))
+            actor.destroy_actor()
+            notes.append(f"the root bone is {name} (bone 0 of the imported skeleton)")
+            return name
+        except Exception as exc:  # noqa: BLE001
+            notes.append(f"the skeleton root could not be read: {exc}")
     try:
-        skeleton = anim.get_editor_property("skeleton")
         names = unreal.AnimationLibrary.get_animation_track_names(anim)
         if names:
+            notes.append(f"falling back to the first animation track: {names[0]}")
             return str(names[0])
-        return str(skeleton.get_name())
     except Exception as exc:  # noqa: BLE001
         notes.append(f"track names unavailable: {exc}")
-        return "root"
+    return "root"
 
 
 def travel_over_clip(anim, bone, frames, notes):
@@ -98,6 +120,24 @@ def main():
         "tolerance": TOLERANCE_CM,
         "passed": passed,
     }
+    # A zero that nobody cross-checked is not evidence: read a bone that must move, with the same
+    # API. A walk cycle swings the thigh, so a large number there proves the reader works and that
+    # the root's zero is a real zero rather than a broken call.
+    control_bone, control_travel = None, None
+    try:
+        tracks = [str(n) for n in unreal.AnimationLibrary.get_animation_track_names(anim)]
+        control_bone = next((n for n in tracks if "thigh" in n.lower()), tracks[0] if tracks else None)
+    except Exception as exc:  # noqa: BLE001
+        notes.append(f"no control bone could be chosen: {exc}")
+    if control_bone and frames:
+        control_travel = travel_over_clip(anim, control_bone, frames, notes)
+    report["negative_control"] = {
+        "bone": control_bone,
+        "travel_cm": None if control_travel is None else round(control_travel, 3),
+        "reader_works": None if control_travel is None else control_travel > 1.0,
+        "why": "the same call on a bone that must move; without it the root's zero proves nothing",
+    }
+
     # The `object` case (an animated node with no bone) is qualified, never guessed at.
     report["object_case"] = {
         "present_in_bundle": any(c.get("root_motion") == "object" for c in bundle.get("clips", [])),

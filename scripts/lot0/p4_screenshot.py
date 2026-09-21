@@ -21,7 +21,9 @@ import unreal
 
 CUBE = "/Engine/BasicShapes/Cube.Cube"
 WIDTH, HEIGHT = 640, 360
-DIFFERENCE_THRESHOLD = 12  # 8-bit levels: below this, two pixels are the same picture
+DIFFERENCE_THRESHOLD = 12
+# Above this the two frames cannot be the same scene: the measurement is refused, not reported.
+PLAUSIBLE_CEILING = 0.40  # 8-bit levels: below this, two pixels are the same picture
 
 
 def read_png(path):
@@ -128,56 +130,197 @@ def build_bed(mesh_path, anim_path, notes):
     else:
         notes.append("no setter found for the skeletal mesh")
     component.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
-    component.set_editor_property("anim_to_play", unreal.EditorAssetLibrary.load_asset(anim_path))
-    component.set_editor_property("looping", True)
+    anim = unreal.EditorAssetLibrary.load_asset(anim_path)
+    # P3 measured it: 5.8.2 has no `anim_to_play` property on the component.
+    try:
+        component.play_animation(anim, True)
+    except Exception as exc:  # noqa: BLE001
+        notes.append(f"play_animation unavailable: {exc}")
     return actor, camera
 
 
-def shoot(name, notes):
-    """Returns the PNG path the engine wrote, or None with a note saying why not."""
-    target = os.path.join(unreal.Paths.project_saved_dir(), "Screenshots", name + ".png")
+def shot_path(name):
+    """`project_saved_dir()` is engine-relative: make it absolute before touching the filesystem."""
+    folder = unreal.Paths.convert_relative_path_to_full(unreal.Paths.project_saved_dir())
+    return os.path.join(folder, "Screenshots", name + ".png")
+
+
+def request_shot(name, notes, controller=None, camera=None):
+    """Ask for a frame. It is latent: only ticks make the engine render and write it.
+
+    The first run slept in a loop waiting for the file and got nothing, because sleeping on the main
+    thread is exactly what stops the engine from ticking. The waiting is done by the tick callback.
+    """
+    target = shot_path(name)
     try:
+        if controller is not None and camera is not None:
+            controller.set_view_target_with_blend(camera, 0.0)
+        os.makedirs(os.path.dirname(target), exist_ok=True)
+        if os.path.isfile(target):
+            os.remove(target)
         unreal.AutomationLibrary.take_high_res_screenshot(WIDTH, HEIGHT, target)
+        return target
     except Exception as exc:  # noqa: BLE001
         notes.append(f"take_high_res_screenshot({name}) raised: {exc}")
         return None
-    for _ in range(200):
-        if os.path.isfile(target) and os.path.getsize(target) > 0:
-            return target
-        time.sleep(0.05)
-    notes.append(f"no PNG appeared for {name} at {target}")
-    return None
+
+
+def written(path):
+    return bool(path) and os.path.isfile(path) and os.path.getsize(path) > 0
+
+
+class Shooter:
+    """Two frames, one run: with the character and without it, the negative control."""
+
+    WAIT_TICKS = 180
+
+    def __init__(self, notes, report_path):
+        self.notes = notes
+        self.report_path = report_path
+        self.report = {"proof": "P4", "engine": unreal.SystemLibrary.get_engine_version(), "notes": notes}
+        self.actor = None
+        self.stage = "warmup"
+        self.waited = 0
+        self.with_character = None
+        self.without_character = None
+        self.handle = None
+        self.pie_actor = None
+        self.camera = None
+        self.controller = None
+
+    def finish(self):
+        if self.handle is not None:
+            unreal.unregister_slate_post_tick_callback(self.handle)
+            self.handle = None
+        frames = {"with_character": self.with_character, "without_character": self.without_character}
+        self.report["frames"] = frames
+        if written(self.with_character) and written(self.without_character):
+            try:
+                share = differing_share(self.with_character, self.without_character)
+                self.report["rendered_share"] = round(share, 5)
+                self.report["threshold"] = 0.01
+                self.report["ceiling"] = PLAUSIBLE_CEILING
+                if share > PLAUSIBLE_CEILING:
+                    # A character cannot cover most of the frame here. A share this high means the
+                    # two frames do not show the same scene, so the number measures the view
+                    # changing, not the character. Looked at: it was a different scene entirely.
+                    self.report["passed"] = None
+                    self.notes.append(
+                        f"not_run: {share:.1%} of the frame differs, above the {PLAUSIBLE_CEILING:.0%} "
+                        "ceiling. The two frames do not show the same scene, so the share measures "
+                        "nothing about the character. Open both PNGs before believing any number here"
+                    )
+                else:
+                    self.report["passed"] = share >= 0.01
+            except Exception as exc:  # noqa: BLE001
+                self.report["passed"] = None
+                self.notes.append(f"the two frames could not be compared: {exc}")
+        else:
+            self.report["rendered_share"] = None
+            self.report["passed"] = None
+            self.notes.append("not_run: the engine wrote no usable frame, so nothing is claimed")
+        with open(self.report_path, "w", encoding="utf-8") as handle:
+            json.dump(self.report, handle, indent=2, sort_keys=True)
+        print("FLUIDUNREAL_PROBE=" + json.dumps({"proof": "P4", "share": self.report["rendered_share"]}))
+        unreal.SystemLibrary.quit_editor()
+
+    def step(self, _delta):
+        self.waited += 1
+        try:
+            if self.stage == "warmup" and self.waited == 20:
+                self.aim_camera()
+            if self.stage == "warmup" and self.waited > 60:
+                self.with_character = request_shot(
+                    "p4-with-character", self.notes, self.controller, self.camera
+                )
+                self.stage, self.waited = "first", 0
+            elif self.stage == "first" and (written(self.with_character) or self.waited > self.WAIT_TICKS):
+                if not written(self.with_character):
+                    self.notes.append("the first frame never appeared")
+                target = self.pie_actor or self.actor
+                target.set_actor_hidden_in_game(True)
+                self.notes.append(f"hidden for the negative control: {target.get_name()}")
+                self.stage, self.waited = "hidden", 0
+            elif self.stage == "hidden" and self.waited > 30:
+                self.without_character = request_shot(
+                    "p4-without-character", self.notes, self.controller, self.camera
+                )
+                self.stage, self.waited = "second", 0
+            elif self.stage == "second" and (
+                written(self.without_character) or self.waited > self.WAIT_TICKS
+            ):
+                self.finish()
+        except Exception as exc:  # noqa: BLE001
+            self.notes.append(f"P4 step raised: {exc}")
+            self.finish()
+
+    def aim_camera(self):
+        """Point the game view at the bed's camera, and freeze everything else.
+
+        The first run compared two frames that showed entirely different scenes and reported a
+        meaningless 69 %: the capture takes the game viewport, which was not looking at the bed.
+        Nothing but the character's presence may differ between the two frames.
+        """
+        world = None
+        for call in (
+            lambda: unreal.get_editor_subsystem(unreal.UnrealEditorSubsystem).get_game_world(),
+            lambda: unreal.EditorLevelLibrary.get_game_world(),
+        ):
+            try:
+                world = call()
+            except Exception:  # noqa: BLE001
+                continue
+            if world is not None:
+                break
+        if world is None:
+            self.notes.append("no game world: the capture cannot be aimed")
+            return
+        try:
+            controller = unreal.GameplayStatics.get_player_controller(world, 0)
+            cameras = unreal.GameplayStatics.get_all_actors_of_class(world, unreal.CameraActor)
+            if controller is None or not cameras:
+                self.notes.append(f"controller={controller is not None}, cameras={len(cameras or [])}")
+                return
+            # The auto-spawned default pawn is a sphere that both occludes the bed and takes the
+            # view back: measured, the second frame showed its interior instead of the scene.
+            self.camera = cameras[0]
+            self.controller = controller
+            pawn = controller.get_controlled_pawn()
+            if pawn is not None and not isinstance(pawn, unreal.SkeletalMeshActor):
+                self.notes.append(f"the default pawn {pawn.get_name()} is removed from the bed")
+                controller.un_possess()
+                pawn.destroy_actor()
+            controller.set_view_target_with_blend(cameras[0], 0.0)
+            self.notes.append(f"the view is aimed at {cameras[0].get_name()}")
+            self.pie_actor = next(
+                iter(unreal.GameplayStatics.get_all_actors_of_class(world, unreal.SkeletalMeshActor)), None
+            )
+            if self.pie_actor is None:
+                self.notes.append("no SkeletalMeshActor in the PIE world: the character cannot be hidden")
+            else:
+                # A moving clip would change the picture on its own: only presence may differ.
+                self.pie_actor.skeletal_mesh_component.stop()
+        except Exception as exc:  # noqa: BLE001
+            self.notes.append(f"aiming the capture failed: {exc}")
+
+    def run(self):
+        self.actor, _camera = build_bed(
+            os.environ["FLUIDUNREAL_LOT0_MESH"], os.environ["FLUIDUNREAL_LOT0_ANIM"], self.notes
+        )
+        subsystem = unreal.get_editor_subsystem(unreal.LevelEditorSubsystem)
+        # P3 measured it: only `editor_request_begin_play` actually simulates and renders.
+        subsystem.editor_request_begin_play()
+        self.handle = unreal.register_slate_post_tick_callback(self.step)
 
 
 def main():
     notes = []
-    report = {"proof": "P4", "engine": unreal.SystemLibrary.get_engine_version(), "notes": notes}
+    shooter = Shooter(notes, os.environ["FLUIDUNREAL_LOT0_OUT"])
     try:
-        actor, _camera = build_bed(
-            os.environ["FLUIDUNREAL_LOT0_MESH"], os.environ["FLUIDUNREAL_LOT0_ANIM"], notes
-        )
-        with_character = shoot("p4-with-character", notes)
-        actor.set_actor_hidden_in_game(True)
-        if hasattr(actor, "set_is_temporarily_hidden_in_editor"):
-            actor.set_is_temporarily_hidden_in_editor(True)
-        without_character = shoot("p4-without-character", notes)
-        report["frames"] = {"with_character": with_character, "without_character": without_character}
-        if with_character and without_character:
-            share = differing_share(with_character, without_character)
-            report["rendered_share"] = round(share, 5)
-            report["threshold"] = 0.01
-            report["passed"] = share >= 0.01
-        else:
-            report["rendered_share"] = None
-            report["passed"] = None
-            notes.append("not_run: the engine wrote no usable frame, so nothing is claimed")
+        shooter.run()
     except Exception as exc:  # noqa: BLE001
-        report["passed"] = None
-        notes.append(f"P4 raised: {exc}")
-    with open(os.environ["FLUIDUNREAL_LOT0_OUT"], "w", encoding="utf-8") as handle:
-        json.dump(report, handle, indent=2, sort_keys=True)
-    print("FLUIDUNREAL_PROBE=" + json.dumps({"proof": "P4", "share": report.get("rendered_share")}))
-    unreal.SystemLibrary.quit_editor()
+        notes.append(f"P4 could not start: {exc}")
+        shooter.finish()
 
 
 main()

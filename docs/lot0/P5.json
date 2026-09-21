@@ -1,0 +1,31 @@
+{
+  "clip_id": "walk-baked",
+  "declared_root_motion": "in_place",
+  "enable_root_motion": false,
+  "engine": "5.8.2-56702186+++UE5+Release-5.8",
+  "measurement": {
+    "bone": "CustomRig_Vitruvian_ProxyTrueRootJoint",
+    "expected": 0.0,
+    "kind": "root_motion_travel",
+    "observed": 0.0,
+    "passed": true,
+    "space": "component",
+    "tolerance": 2.0,
+    "unit": "cm"
+  },
+  "negative_control": {
+    "bone": "def-thigh_l",
+    "reader_works": true,
+    "travel_cm": 57.5,
+    "why": "the same call on a bone that must move; without it the root's zero proves nothing"
+  },
+  "notes": [
+    "the root bone is CustomRig_Vitruvian_ProxyTrueRootJoint (bone 0 of the imported skeleton)"
+  ],
+  "object_case": {
+    "note": "if it appears, the kit either converts it or refuses it with a handoff.request",
+    "present_in_bundle": false,
+    "verdict": "not_qualified_by_this_run"
+  },
+  "proof": "P5"
+}
