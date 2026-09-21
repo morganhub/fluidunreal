@@ -35,16 +35,19 @@ def test_U01_doctor_reports_what_it_saw(project):
         "fluidblend.kit",
     }
     # Whatever this machine has, nothing is claimed available without having been seen working.
+    # This runs on a machine with the engine and on CI without it: both must be honest.
     python = next(c for c in report.capabilities if c.capability_id == "unreal.python")
-    assert python.status != "available", "the probe was not run: available must not be claimed"
-    assert "not probed" in (python.error or "")
-
     editor = next(c for c in report.capabilities if c.capability_id == "unreal.editor")
+    assert python.status != "available", "the probe was not run: available must not be claimed"
+    assert python.error, "an unavailable capability always says why"
+
     if editor.status == "available":
         assert editor.evidence["locked_series"] == LOCKED_UNREAL_SERIES
         assert editor.evidence["sha256"] and editor.version
+        assert "not probed" in python.error
     else:
         assert editor.status in ("not_installed", "incompatible") and editor.error
+        assert "no editor" in python.error
 
     written = read_json(project.root / "state" / "diagnostics" / "capabilities.json")
     assert written["host"]["locked_unreal_series"] == LOCKED_UNREAL_SERIES

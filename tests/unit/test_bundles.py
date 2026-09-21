@@ -256,3 +256,31 @@ def test_an_operation_that_is_not_implemented_yet_says_so_rather_than_pretending
     assert outcome.result.errors[0].code == ErrorCode.UNSUPPORTED_CAPABILITY
     assert "not available in this lot" in outcome.result.errors[0].message
     assert "ops --all" in (outcome.result.errors[0].recovery or "")
+
+
+def test_the_fixture_bundle_matches_its_own_manifest_in_git(fixture_bundle):
+    """A bundle is pinned by the sha256 in its manifest, so git must not normalise its files.
+
+    It did: the text files were stored with different line endings than the ones hashed, so every
+    checkout on CI produced a bundle that refused itself. `fixtures/** -text` fixes it, and this
+    compares the manifest to the bytes git keeps rather than to the ones on this disk.
+    """
+    import hashlib
+    import subprocess
+
+    manifest = json.loads((fixture_bundle / "handoff-bundle.json").read_text(encoding="utf-8"))
+    for entry in manifest["files"]:
+        tracked = f"fixtures/vitruvian-walk-unreal/{entry['path']}"
+        blob = subprocess.run(  # noqa: S603 - argument list
+            ["git", "cat-file", "blob", f":{tracked}"],
+            capture_output=True,
+            check=False,
+            cwd=str(fixture_bundle.parents[1]),
+        )
+        if blob.returncode != 0:
+            pytest.skip(f"not_run: {tracked} is not in the index")
+        if blob.stdout.startswith(b"version https://git-lfs"):
+            continue  # stored as an LFS pointer; its content is checked by accept itself
+        assert hashlib.sha256(blob.stdout).hexdigest() == entry["sha256"], (
+            f"{tracked}: git stores different bytes than the bundle's manifest records"
+        )

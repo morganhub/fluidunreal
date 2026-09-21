@@ -44,6 +44,41 @@ READY_DEADLINE_TICKS = 120
 PROXY_SUFFIX = "proxytruerootjoint"
 
 
+def force_pose_ticking(component, builder):
+    """Make the component advance its pose even though nothing is rendered.
+
+    A skeletal mesh defaults to ticking its pose only when it is rendered. Under `-nullrhi` nothing
+    ever is, so the clip never advances and every bone reads the same position forever: which is
+    exactly the 0.0 cm this bed measured.
+    """
+    applied = []
+    # Measured on 5.8.2: the default is ONLY_TICK_POSE_WHEN_RENDERED, and under -nullrhi nothing
+    # ever is, so the pose never advances. The enum value is ..._AND_REFRESH_BONES on this series.
+    try:
+        option = unreal.VisibilityBasedAnimTickOption.ALWAYS_TICK_POSE_AND_REFRESH_BONES
+        component.set_editor_property("visibility_based_anim_tick_option", option)
+        applied.append("visibility_based_anim_tick_option")
+    except Exception as error:  # noqa: BLE001
+        builder.warn("visibility_based_anim_tick_option could not be set: %s" % error)
+    for prop, value in (
+        ("no_skeleton_update", False),
+        ("skip_bounds_update_when_interpolating", False),
+        ("enable_update_rate_optimizations", False),
+    ):
+        try:
+            component.set_editor_property(prop, value)
+            applied.append(prop)
+        except Exception as error:  # noqa: BLE001
+            # Not every knob exists on every series; which ones took is what the report records.
+            builder.warn("%s could not be set: %s" % (prop, error))
+    try:
+        component.set_component_tick_enabled(True)
+        applied.append("set_component_tick_enabled")
+    except Exception as error:  # noqa: BLE001
+        builder.warn("set_component_tick_enabled unavailable: %s" % error)
+    return applied
+
+
 def play_single_animation(component, anim, builder):
     """Loop one clip, whichever API this series exposes. There is no `anim_to_play` on 5.8."""
     for label, call in (
@@ -104,6 +139,7 @@ class Bed:
         self.on_finished = None
         self.ready_tick = 0
         self.bone_travel = 0.0
+        self.tick_options = []
 
     # --- reporting ----------------------------------------------------------------------
 
@@ -171,6 +207,7 @@ class Bed:
         else:
             raise OpError("INTERNAL_ERROR", "no setter for the skeletal mesh on this series")
         component.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
+        force_pose_ticking(component, self.builder)
         play_single_animation(component, self.anim, self.builder)
 
     def resolve(self):
@@ -194,7 +231,19 @@ class Bed:
                 self.note("possessed by %s" % controller.get_name())
         except Exception as error:  # noqa: BLE001
             self.builder.warn("the character could not be possessed: %s" % error)
-        # The PIE duplicate does not inherit single-node playback: re-arm it.
+        # The PIE duplicate does not inherit single-node playback: re-arm it, and make it tick
+        # its pose although nothing is rendered under -nullrhi.
+        try:
+            chosen.mesh.set_animation_mode(unreal.AnimationMode.ANIMATION_SINGLE_NODE)
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the PIE animation mode could not be set: %s" % error)
+        self.tick_options = force_pose_ticking(chosen.mesh, self.builder)
+        self.note("pose ticking forced through %s" % ", ".join(self.tick_options or ["nothing"]))
+        try:
+            self.note("PIE animation mode: %s" % chosen.mesh.get_animation_mode())
+            self.note("PIE anim instance: %s" % (chosen.mesh.get_anim_instance() is not None))
+        except Exception as error:  # noqa: BLE001
+            self.builder.warn("the PIE animation mode is unreadable: %s" % error)
         self.play_via = play_single_animation(chosen.mesh, self.anim, self.builder)
         return chosen
 
@@ -325,12 +374,19 @@ class Bed:
             self.finish()
 
     def bone(self, component, name):
+        """How far this bone has moved from its reference pose.
+
+        A world socket location also moves when the actor walks, which is how the first version of
+        this check passed while measuring nothing about the clip. The delta from the rest pose
+        cannot: it is zero unless the skeleton is actually deformed.
+        """
         if not name:
             return None
         try:
-            return component.get_socket_location(name)
+            delta = component.get_delta_transform_from_ref_pose(name)
+            return delta.translation
         except Exception as error:  # noqa: BLE001
-            self.builder.warn("the socket location of %s is unreadable: %s" % (name, error))
+            self.builder.warn("the delta from the ref pose of %s is unreadable: %s" % (name, error))
             return None
 
     def finish(self, aborted=None):
