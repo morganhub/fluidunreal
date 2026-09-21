@@ -16,6 +16,7 @@ import fluidunreal
 from fluidunreal.contracts.operations import OPERATIONS
 from fluidunreal.contracts.schema_export import check_up_to_date, export_all
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
+from fluidunreal.core.tasks import TaskRunner
 
 
 def _print(data: object, as_json: bool) -> None:
@@ -72,6 +73,15 @@ def cmd_inspect(args: argparse.Namespace) -> int:
     return exit_codes.OK
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    project = load_project(Path(args.project))
+    payload = json.loads(Path(args.operation).read_text(encoding="utf-8"))
+    runner = TaskRunner(project)
+    outcome = runner.run(payload, force_dry_run=args.dry_run)
+    _print(outcome.result.model_dump(mode="json"), args.json or True)
+    return outcome.exit_code
+
+
 def cmd_schema(args: argparse.Namespace) -> int:
     out = Path(args.out)
     if args.action == "export":
@@ -118,6 +128,13 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--project", required=True)
     p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_inspect)
+
+    p = sub.add_parser("run", help="execute a typed request")
+    p.add_argument("--project", required=True)
+    p.add_argument("--operation", required=True, help="path to the request JSON")
+    p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--json", action="store_true")
+    p.set_defaults(func=cmd_run)
 
     p = sub.add_parser("schema", help="export or check the JSON Schemas")
     p.add_argument("action", choices=["export", "check"])

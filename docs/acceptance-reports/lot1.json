@@ -1,0 +1,33 @@
+{
+  "generated_at": "2026-09-21 10:58 UTC",
+  "unreal": "C:\\Program Files\\Epic Games\\UE_5.8\\Engine\\Binaries\\Win64\\UnrealEditor-Cmd.exe",
+  "scenarios": [
+    {
+      "scenario": "U02",
+      "test": "tests/unit/test_scaffold_and_cli.py::test_U02_init_is_idempotent_and_keeps_manual_edits",
+      "status": "passed",
+      "duration_s": 0.08,
+      "detail": "",
+      "title": "Initialize a project, and re-run the initialization",
+      "notes": []
+    },
+    {
+      "scenario": "U03",
+      "test": "tests/unit/test_bundles.py::test_U03_accept_verifies_everything_it_claims",
+      "status": "passed",
+      "duration_s": 0.16,
+      "detail": "",
+      "title": "Accept a bundle published by fluidblend",
+      "notes": []
+    },
+    {
+      "scenario": "U04",
+      "test": "tests/unit/test_bundles.py::test_U04_wrap_describes_only_what_the_file_says",
+      "status": "passed",
+      "duration_s": 0.35,
+      "detail": "",
+      "title": "Wrap a third-party GLB into a bundle",
+      "notes": []
+    }
+  ]
+}
