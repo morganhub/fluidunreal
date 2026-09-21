@@ -123,3 +123,29 @@ def test_a_foreign_series_is_never_selected(monkeypatch):
     chosen, notes = discovery.select(None)
     assert chosen is None
     assert any("not the locked" in note for note in notes)
+
+
+def test_the_pinned_hashes_match_what_git_stores():
+    """A pin over the working copy is worth nothing if git hands a checkout different bytes.
+
+    The template was pinned over CRLF that Windows wrote, while git stored LF, so every checkout on
+    CI failed to match. The template is marked `-text` now, and this compares the pin to the bytes
+    git actually keeps rather than to the ones on this disk.
+    """
+    import hashlib
+    import subprocess
+
+    root = kit_root()
+    pinned = read_json(TEMPLATE / "template-manifest.json")["files"]
+    for relative, digest in sorted(pinned.items()):
+        tracked = f"templates/game-unreal/{relative}"
+        stored = subprocess.run(  # noqa: S603 - argument list
+            ["git", "-C", str(root), "cat-file", "blob", f":{tracked}"],
+            capture_output=True,
+            check=False,
+        )
+        if stored.returncode != 0:
+            pytest.skip(f"not_run: {tracked} is not in the index")
+        assert hashlib.sha256(stored.stdout).hexdigest() == digest, (
+            f"{tracked}: git stores different bytes than the pin records"
+        )
