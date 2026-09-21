@@ -41,7 +41,14 @@ from fluidunreal.contracts.operations import (
 )
 from fluidunreal.contracts.project import LOCKED_UNREAL_SERIES
 from fluidunreal.core.permissions import operation_allowed
-from fluidunreal.core.project import Project, kit_root
+from fluidunreal.core.project import (
+    Project,
+    is_test_bed,
+    kit_root,
+    outside_changes,
+    outside_content,
+    user_project_problems,
+)
 from fluidunreal.core.ue_content import next_version as ue_next_version
 from fluidunreal.core.ue_content import write_content_index, write_runtime_manifest
 from fluidunreal.hostops import HOST_HANDLERS, HostContext, HostOpError
@@ -309,6 +316,17 @@ class TaskRunner:
         out_dir: Path,
     ) -> OperationResult:
         """One dedicated editor, one operation. Never the session someone has open."""
+        # Before the editor is even looked for: what is wrong with someone else's project does not
+        # depend on which engine is installed.
+        if not is_test_bed(self.project):
+            problems = user_project_problems(self.project)
+            if problems:
+                raise TaskAbort(
+                    ErrorCode.SCENE_CONFLICT,
+                    "the Unreal project cannot be written safely: " + problems[0],
+                    recovery="fix what is listed in details; the kit changes nothing outside Content/Fluid",
+                    details={"problems": problems},
+                )
         editor, notes = unreal_discovery.select(self.project.local.unreal_editor_executable)
         if editor is None:
             raise TaskAbort(
@@ -349,6 +367,10 @@ class TaskRunner:
             task.worker = WorkerInfo(**info)
             self.state.upsert_task(task)
 
+        # In someone else's project, whatever changes outside Content/Fluid is said, by name. The kit
+        # writes nothing there; the engine sometimes does (it added Config/DefaultInput.ini to a
+        # project that had none), and the user is told rather than left to find it.
+        watched = None if is_test_bed(self.project) else outside_content(self.project)
         with self.locks.hold("unreal-instance", purpose=f"{spec.name} {request.operation_id}"):
             outcome = unreal_batch.run_operation(
                 editor=Path(editor.path),
@@ -385,6 +407,9 @@ class TaskRunner:
                 f"the editor wrote a result the engine cannot read: {exc}",
                 status=OperationStatus.failed,
             ) from exc
+        if watched is not None:
+            for change in outside_changes(watched, outside_content(self.project)):
+                result.warnings.append(f"outside Content/Fluid, while the editor ran: {change}")
         result.metrics.setdefault("unreal_elapsed_s", outcome.elapsed_s)
         result.metrics.setdefault("unreal_exit_code", outcome.exit_code)
         if result.status != OperationStatus.succeeded and not result.errors:

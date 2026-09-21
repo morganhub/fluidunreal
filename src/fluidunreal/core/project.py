@@ -280,6 +280,91 @@ def template_problems(template: Path) -> list[str]:
     return problems
 
 
+def is_test_bed(project: Project) -> bool:
+    return Path(project.manifest.ue.uproject).as_posix() == TEST_BED
+
+
+def user_project_problems(project: Project) -> list[str]:
+    """What stops the kit from writing into an Unreal project the user brought, each by name.
+
+    The test bed is the kit's own and pinned by hash; someone else's project is not. The kit never
+    edits a `.uproject` to make itself fit: it says which line is missing and stops. And it writes
+    under `Content/Fluid/**` only, so anything there it did not write is a reason to stop, not
+    something to overwrite.
+    """
+    from fluidunreal.core.ue_content import ASSET_EXTENSIONS, CONTENT_INDEX, VERSION_DIR
+
+    problems: list[str] = []
+    uproject = project.uproject
+    try:
+        descriptor = read_json(uproject)
+    except (ValueError, OSError) as exc:
+        return [f"{uproject.name} is unreadable: {exc}"]
+    association = str(descriptor.get("EngineAssociation") or "")
+    # A version number names an installed engine; a GUID or nothing names a source build, which
+    # the doctor checks separately.
+    if re.fullmatch(r"\d+\.\d+(\.\d+)?", association) and not association.startswith(LOCKED_UNREAL_SERIES):
+        problems.append(
+            f"{uproject.name} is for Unreal Engine {association}; this kit is locked on {LOCKED_UNREAL_SERIES}"
+        )
+    plugins = {str(p.get("Name")): bool(p.get("Enabled")) for p in descriptor.get("Plugins") or []}
+    if not plugins.get("PythonScriptPlugin"):
+        problems.append(
+            f'PythonScriptPlugin is not enabled in {uproject}: add {{"Name": "PythonScriptPlugin", '
+            '"Enabled": true} to its "Plugins" yourself; the kit never edits your .uproject'
+        )
+    content = project.content_root
+    if content.is_symlink() or content.is_junction():
+        problems.append(f"{content} is a link: the kit writes only into a real folder")
+        return problems
+    if not content.is_dir():
+        return problems
+    indexed: set[Path] = set()
+    for index in content.rglob(CONTENT_INDEX):
+        try:
+            files = read_json(index).get("files") or {}
+        except (ValueError, OSError):
+            continue
+        indexed.update((index.parent / relative).resolve() for relative in files)
+    for path in sorted(content.rglob("*")):
+        if not path.is_file() or path.suffix.lower() not in ASSET_EXTENSIONS:
+            continue
+        relative = path.relative_to(content).as_posix()
+        if relative.split("/", 1)[0] == "_staging":
+            problems.append(f"a staging folder was left under {content.name}: {relative}; run task reconcile")
+        elif path.resolve() not in indexed:
+            in_version = any(VERSION_DIR.fullmatch(part) for part in path.relative_to(content).parts[:-1])
+            what = "unindexed version content" if in_version else "not written by this kit"
+            problems.append(f"{what}: {content.name}/{relative}")
+    return problems
+
+
+def outside_content(project: Project) -> dict[str, tuple[int, int]]:
+    """Size and modification time of every file of the Unreal project the kit must not touch.
+
+    Not a hash: a real game holds thousands of assets, and this runs around every operation. The
+    engine's working folders are left out, as is Content/Fluid, which the kit owns.
+    """
+    game = project.uproject.parent
+    fluid = project.content_root
+    found: dict[str, tuple[int, int]] = {}
+    for path in game.rglob("*"):
+        relative = path.relative_to(game)
+        if relative.parts[0] in UNCOUNTED_DIRS or path == fluid or fluid in path.parents:
+            continue
+        if path.is_file():
+            stat = path.stat()
+            found[relative.as_posix()] = (stat.st_size, stat.st_mtime_ns)
+    return found
+
+
+def outside_changes(before: dict[str, tuple[int, int]], after: dict[str, tuple[int, int]]) -> list[str]:
+    changes = [f"added {name}" for name in sorted(set(after) - set(before))]
+    changes += [f"removed {name}" for name in sorted(set(before) - set(after))]
+    changes += [f"changed {name}" for name in sorted(set(before) & set(after)) if before[name] != after[name]]
+    return changes
+
+
 def install_test_bed(root: Path, *, dry_run: bool = False) -> dict[str, Any]:
     """Copy the pinned test bed into the project. Never over something already there."""
     template = templates_dir() / "game-unreal"

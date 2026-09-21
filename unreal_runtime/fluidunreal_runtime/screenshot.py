@@ -237,6 +237,14 @@ def run(ctx, request, builder):
                 destination = ctx.out("ue-frame.png" if name == "with-character" else "ue-frame-empty.png")
                 shutil.copyfile(source, destination)
                 frames[name] = destination
+        # The engine wrote the frames under the Unreal project's Saved/: copied out, then removed,
+        # so a user's own project keeps nothing of the kit outside Content/Fluid.
+        shots = os.path.dirname(bed.shot_path("x"))
+        shutil.rmtree(shots, ignore_errors=True)
+        try:
+            os.rmdir(os.path.dirname(shots))  # only if no other run's frames are still there
+        except OSError:
+            pass
         comparison, passed, refusal = _judge(frames, builder)
         report = {
             "schema_version": "1.0",
