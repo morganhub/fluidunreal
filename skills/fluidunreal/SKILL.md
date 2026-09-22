@@ -10,7 +10,7 @@ description: >-
   writes a typed request and hands over to the `fluidblend` skill instead of touching the source.
   Check the operation catalogue for unsupported features; never simulate success.
 license: MIT
-metadata: {version: "0.3.4", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
+metadata: {version: "0.3.5", lot: "lot 3 (complete)", compatibility: "Windows 11, Unreal Engine 5.8, uv, PowerShell 7"}
 ---
 
 # fluidunreal — driven Unreal Engine imports
@@ -56,7 +56,8 @@ written next to the skill by the installer, then walking up to a `pyproject.toml
 | `approve-plugins --plugins <A,B>` | record the user's approval of plugins the `.uproject` enables. Only on their explicit decision |
 | `schema export\|check` | the JSON Schemas |
 
-Every subcommand but `init`, `ops` and `schema` takes `--project <project>`.
+Every subcommand but `init`, `ops` and `schema` takes `--project <project>`. A relative
+`--operation` path is read from that project's root, not from the working directory.
 
 ## Decision rules
 
@@ -133,17 +134,17 @@ project's settings.
 - Units: the bundle is in metres, Unreal is in centimetres. The conversion is **measured** against
   the bundle's reference pose, never assumed.
 
-## What this lot does not do
+## What this kit does not do
 
-Lot 0 is not finished, so **nothing is available yet**. When asked for anything this kit does not
-do, say it plainly and stop:
+Not yet (P2, listed by `fluidunreal ops --all` and refused by name): packaging or cooking
+(`game.package`), retargeting to the UE5 Mannequin (`retarget.mannequin`), a live session in an open
+editor, FBX. When asked for anything this kit does not do, say it plainly and stop:
 
 > This kit does not do that. Here is what it does today, and here is what would have to be proven
 > first.
 
-Never in scope: building your game, gameplay Blueprints, C++ or Widgets; retargeting to the UE5
-Mannequin; packaging or cooking; a live session in an open editor; MetaHuman, Nanite, Lumen, Chaos,
-Niagara or custom materials; any frame-rate or GPU claim; macOS or Linux.
+Never in scope: building your game, gameplay Blueprints, C++ or Widgets; MetaHuman, Nanite, Lumen,
+Chaos, Niagara or custom materials; any frame-rate or GPU claim; macOS or Linux.
 
 ## Mandatory stops
 

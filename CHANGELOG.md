@@ -3,6 +3,26 @@
 Format: one entry per released version. Dates are those of the development machine.
 This project follows semantic versioning from 1.0.0 onwards; before that, the interface may change.
 
+## 0.3.5 — 2026-09-22 — what the round trip with fluidblend found
+
+Found by accepting a bundle fluidblend 0.6.2 had just exported, then running the four hand-off
+requests for real in that kit, in Blender.
+
+- **The bake and clip templates refuse a baked instance.** On the reference character, baked,
+  `bake_rigid_limbs` had fluidblend bake the baked skeleton again, and the walk came back declared
+  in place and not looping; `create_clip` was refused over there. There is no control rig left at
+  the bundle's revision: both now stop here (`UNSUPPORTED_CAPABILITY`) and say to hand over to the
+  `fluidblend` skill by name. fluidblend 0.6.3 refuses the second bake on its side as well.
+- **A relative `--operation` is read from the project root**, as fluidblend does. It was read from
+  the working directory, so an agent at the root of a workspace holding both kits' projects got a
+  traceback. An unreadable or malformed request is now refused with exit 4, never a traceback.
+- **Output is UTF-8 even when redirected.** Windows wrote the ANSI code page into a pipe: the
+  `fluidblend run` command a hand-off prints reached an agent with `Démo` as `D�mo`.
+- **What a finished lot said about itself.** `bundle.accept` still pointed at "asset.import is not
+  available until lot 2", and the skill said "nothing is available yet". Both now say what is.
+- The runtime is unchanged (0.3.4). fluidblend stays pinned on `v0.6.2`: 0.6.3 changes nothing
+  this kit imports.
+
 ## 0.3.4 — 2026-09-21 — what the skill promised about security, now built and proven
 
 - **Plugins are reviewed before a project is opened.** The skill told agents to stop on "a plugin

@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import json
+import os
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -10,6 +14,7 @@ from fluidblend.core.state import StateStore
 
 from fluidunreal.cli import main
 from fluidunreal.core.project import ProjectError, inspect_project, load_project, scaffold_project
+from tests.conftest import make_request
 
 
 @pytest.mark.acceptance("U02", title="Initialize a project, and re-run the initialization")
@@ -117,3 +122,44 @@ def test_cli_ops_lists_what_is_not_available_only_on_request(capsys):
 def test_cli_reports_a_missing_project_as_blocked(tmp_path: Path, capsys):
     assert main(["inspect", "--project", str(tmp_path / "nowhere")]) == exit_codes.BLOCKED
     assert "no project.json" in capsys.readouterr().err
+
+
+def test_a_relative_request_is_read_from_the_project_not_the_working_directory(
+    tmp_path: Path, fixture_bundle: Path, monkeypatch, capsys
+):
+    """An agent at the root of a workspace holding both kits' projects passes `--project unreal`."""
+    root = tmp_path / "workspace" / "unreal"
+    scaffold_project(root, project_id="demo-game")
+    request = make_request("bundle.accept", "acc-001", parameters={"source_path": str(fixture_bundle)})
+    (root / "requests" / "accept.json").write_text(json.dumps(request), encoding="utf-8")
+    monkeypatch.chdir(tmp_path / "workspace")
+    code = main(["run", "--project", "unreal", "--operation", "requests/accept.json", "--dry-run", "--json"])
+    assert code == exit_codes.OK, capsys.readouterr().out
+    assert json.loads(capsys.readouterr().out)["operation_id"] == "acc-001"
+
+
+def test_an_unreadable_request_is_refused_not_a_traceback(tmp_path: Path, capsys):
+    root = tmp_path / "unreal"
+    scaffold_project(root, project_id="demo-game")
+    missing = ["run", "--project", str(root), "--operation", "requests/nowhere.json", "--json"]
+    assert main(missing) == exit_codes.INVALID
+    assert "cannot read requests/nowhere.json" in json.loads(capsys.readouterr().out)["error"]
+    (root / "requests" / "broken.json").write_text("{not json", encoding="utf-8")
+    broken = ["run", "--project", str(root), "--operation", "requests/broken.json"]
+    assert main(broken) == exit_codes.INVALID
+    assert "cannot read" in capsys.readouterr().err
+
+
+def test_redirected_output_is_utf8_so_an_accented_path_comes_back_intact(tmp_path: Path):
+    """An agent reads the pipe as UTF-8. Windows used to write the ANSI code page into it."""
+    target = tmp_path / "Mon Jeu é"
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    command = [sys.executable, "-m", "fluidunreal.cli", "init", "--path", str(target)]
+    done = subprocess.run(  # noqa: S603 - argument list, no shell
+        [*command, "--project-id", "my-game", "--dry-run", "--json"],
+        capture_output=True,
+        env=environment,
+        check=False,
+    )
+    assert done.returncode == 0, done.stderr.decode("utf-8", "replace")
+    assert json.loads(done.stdout.decode("utf-8"))["root"] == str(target)

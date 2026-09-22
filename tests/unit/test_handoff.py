@@ -17,40 +17,42 @@ from fluidunreal.hostops.handoff import TEMPLATES
 from tests.conftest import make_request, note
 
 
-def bundle_11(tmp_path, fixture_bundle):
-    """The reference bundle as fluidblend 0.6.2 writes it: schema 1.1, with the Blender range.
+def rewritten(tmp_path, fixture_bundle, *, schema="1.1", baked=False):
+    """The reference bundle with its manifest rewritten; the files it hashes are the same.
 
-    The fixture itself stays 1.0 on purpose (see fixtures/README.md). Only the manifest changes; the
-    files it hashes are the same.
+    Schema 1.1 is what fluidblend 0.6.2 writes: the Blender range beside the GLB's. `baked=False`
+    is the character exported before its bake, the case the bake and clip templates exist for: on
+    a baked one there is no control rig left to work on. The fixture itself stays 1.0 and baked on
+    purpose (see fixtures/README.md).
     """
-    folder = tmp_path / "bundle-1.1"
+    folder = tmp_path / f"bundle-{schema}-{'baked' if baked else 'rig'}"
     shutil.copytree(fixture_bundle, folder)
     manifest = folder / "handoff-bundle.json"
     data = json.loads(manifest.read_text(encoding="utf-8"))
-    data["schema_version"] = "1.1"
+    data["schema_version"] = schema
+    for instance in data["instances"]:
+        instance["baked"] = baked
     for clip in data["clips"]:
-        clip["source_frame_range"] = {"start": 1, "end_exclusive": 49}
+        if schema == "1.1":
+            clip["source_frame_range"] = {"start": 1, "end_exclusive": 49}
     manifest.write_text(json.dumps(data), encoding="utf-8")
     return folder
 
 
-@pytest.fixture
-def linked(tmp_path, fixture_bundle):
-    """A project that knows where the fluidblend project is, with a 1.1 bundle accepted."""
-    fixture_bundle = bundle_11(tmp_path, fixture_bundle)
-    root = tmp_path / "linked"
-    scaffold_project(
-        root,
-        project_id="demo-game",
-        fluidblend_project=str(tmp_path / "studio"),
-    )
+def accepted_project(tmp_path, source, name="linked"):
+    root = tmp_path / name
+    scaffold_project(root, project_id="demo-game", fluidblend_project=str(tmp_path / "studio"))
     project = load_project(root)
     runner = TaskRunner(project)
-    accepted = runner.run(
-        make_request("bundle.accept", "acc-001", parameters={"source_path": str(fixture_bundle)})
-    )
+    accepted = runner.run(make_request("bundle.accept", "acc-001", parameters={"source_path": str(source)}))
     assert accepted.exit_code == exit_codes.OK, accepted.result.model_dump()
     return runner, project
+
+
+@pytest.fixture
+def linked(tmp_path, fixture_bundle):
+    """A project that knows where the fluidblend project is, with a 1.1 bundle of an unbaked rig."""
+    return accepted_project(tmp_path, rewritten(tmp_path, fixture_bundle))
 
 
 def hand_off(runner, kind, operation_id=None, **parameters):
@@ -116,18 +118,29 @@ def test_the_bake_template_names_the_clip_and_its_range(linked):
 
 
 def test_a_bundle_that_does_not_name_the_blender_range_is_not_guessed(tmp_path, fixture_bundle):
-    root = tmp_path / "old-bundle"
-    scaffold_project(root, project_id="demo-game", fluidblend_project=str(tmp_path / "studio"))
-    runner = TaskRunner(load_project(root))
-    accepted = runner.run(
-        make_request("bundle.accept", "acc-001", parameters={"source_path": str(fixture_bundle)})
-    )
-    assert accepted.exit_code == exit_codes.OK, "a 1.0 bundle is still read"
+    # accepted_project asserts it: a 1.0 bundle is still read.
+    runner, project = accepted_project(tmp_path, rewritten(tmp_path, fixture_bundle, schema="1.0"), "old")
+    root = project.root
     refused = hand_off(runner, "bake_rigid_limbs", clip_id="walk-baked", instance_id="hero-01")
     assert refused.exit_code == exit_codes.FAILED
     assert "does not name the Blender range" in refused.result.errors[0].message
     assert "reexport_unreal" in refused.result.errors[0].recovery
     assert not (root / "requests" / "fluidblend" / "handoff-bake_rigid_limbs.json").exists()
+
+
+@pytest.mark.parametrize("kind", ["bake_rigid_limbs", "create_clip"])
+def test_a_baked_character_has_no_control_rig_to_fix(tmp_path, fixture_bundle, kind):
+    """Run for real, fluidblend re-baked the baked skeleton (walk back to in place) or refused the clip."""
+    runner, project = accepted_project(tmp_path, rewritten(tmp_path, fixture_bundle, baked=True), "baked")
+    refused = hand_off(runner, kind, clip_id="walk-baked", instance_id="hero-01")
+    assert refused.exit_code == exit_codes.BLOCKED
+    error = refused.result.errors[0]
+    assert error.code == ErrorCode.UNSUPPORTED_CAPABILITY and "exported it baked" in error.message
+    assert "fluidblend skill by name" in error.recovery
+    assert not (project.root / "requests" / "fluidblend" / f"handoff-{kind}.json").exists()
+    # What still makes sense on a baked character is still written.
+    for other in ("reexport_unreal", "look_at_glb"):
+        assert hand_off(runner, other).exit_code == exit_codes.OK
 
 
 def test_the_look_template_asks_for_the_browser_and_says_what_comes_next(linked):

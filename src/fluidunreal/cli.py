@@ -6,6 +6,7 @@ Exit codes are fluidblend's, unchanged, so one reader understands both kits.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 from pathlib import Path
@@ -35,6 +36,27 @@ def _refuse(message: str, as_json: bool, details: object = None) -> None:
         _print({"error": message, "details": details}, True)
     else:
         print(f"error: {message}", file=sys.stderr)
+
+
+def _load_request(path_text: str, project_root: Path) -> object:
+    """A relative request path is read from the project root, as fluidblend does.
+
+    It used to be read from the working directory: an agent at the root of a workspace holding both
+    kits' projects ran `--project unreal --operation requests/x.json` and got a traceback.
+    """
+    path = Path(path_text)
+    if not path.is_absolute():
+        path = project_root / path
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def _utf8_output() -> None:
+    """Redirected, Windows writes the ANSI code page: `Démo` reached an agent reading the pipe as
+    UTF-8 as `D�mo`, and the fluidblend command a hand-off prints named a folder that does not
+    exist. The output is UTF-8 whatever it is written to."""
+    for stream in (sys.stdout, sys.stderr):
+        if isinstance(stream, io.TextIOWrapper):
+            stream.reconfigure(encoding="utf-8")
 
 
 def cmd_ops(args: argparse.Namespace) -> int:
@@ -124,7 +146,11 @@ def cmd_capabilities(args: argparse.Namespace) -> int:
 
 def cmd_run(args: argparse.Namespace) -> int:
     project = load_project(Path(args.project))
-    payload = json.loads(Path(args.operation).read_text(encoding="utf-8"))
+    try:
+        payload = _load_request(args.operation, project.root)
+    except (OSError, ValueError) as exc:
+        _refuse(f"cannot read {args.operation}: {exc}", args.json)
+        return exit_codes.INVALID
     runner = TaskRunner(project)
     outcome = runner.run(payload, force_dry_run=args.dry_run)
     _print(outcome.result.model_dump(mode="json"), args.json or True)
@@ -134,7 +160,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_plan(args: argparse.Namespace) -> int:
     project = load_project(Path(args.project))
     try:
-        payload = json.loads(Path(args.operation).read_text(encoding="utf-8"))
+        payload = _load_request(args.operation, project.root)
         request, params, spec = validate_request(payload)
     except RequestValidationError as exc:
         _refuse(str(exc), args.json, exc.details)
@@ -331,6 +357,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    _utf8_output()
     parser = build_parser()
     args = parser.parse_args(argv)
     try:

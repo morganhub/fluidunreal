@@ -67,6 +67,26 @@ def _instance(bundle: dict[str, Any], instance_id: str | None) -> dict[str, Any]
     return instances[0]
 
 
+def _control_rig(bundle: dict[str, Any], instance_id: str | None, kind: str) -> dict[str, Any]:
+    """The instance an animation fix applies to. A baked one has no control rig at that revision.
+
+    Run for real against fluidblend, the bake template on a baked character re-baked the baked
+    skeleton and got the walk back declared in place; the clip template was refused outright.
+    """
+    instance = _instance(bundle, instance_id)
+    if instance.get("baked"):
+        raise HostOpError(
+            ErrorCode.UNSUPPORTED_CAPABILITY,
+            f"{kind} cannot apply to {instance['instance_id']}: the bundle exported it baked, and "
+            "fluidblend neither bakes a baked skeleton again nor authors clips on it",
+            recovery=(
+                "its control rig is in the fluidblend work version before the bake, which no request "
+                "reopens: hand over to the fluidblend skill by name and say what is wrong"
+            ),
+        )
+    return instance
+
+
 def _clip(bundle: dict[str, Any], clip_id: str | None) -> dict[str, Any]:
     clips = bundle.get("clips") or []
     if clip_id:
@@ -100,7 +120,7 @@ def _reexport(ctx: HostContext, bundle: dict[str, Any], producer: dict[str, Any]
 
 
 def _bake(ctx: HostContext, bundle: dict[str, Any], _producer: dict[str, Any]) -> dict[str, Any]:
-    instance = _instance(bundle, ctx.params.instance_id)
+    instance = _control_rig(bundle, ctx.params.instance_id, "bake_rigid_limbs")
     clip = _clip(bundle, ctx.params.clip_id)
     # The Blender range, not the GLB's: `frame_range` starts at 0 after slide_to_zero, and a bake
     # built from it baked the walk over frames 0-47 instead of 1-48. Bundles name the Blender range
@@ -129,7 +149,7 @@ def _bake(ctx: HostContext, bundle: dict[str, Any], _producer: dict[str, Any]) -
 
 
 def _create(ctx: HostContext, bundle: dict[str, Any], _producer: dict[str, Any]) -> dict[str, Any]:
-    instance = _instance(bundle, ctx.params.instance_id)
+    instance = _control_rig(bundle, ctx.params.instance_id, "create_clip")
     recipe = ctx.params.recipe or "walk"
     return {
         "operation": "animation.create",

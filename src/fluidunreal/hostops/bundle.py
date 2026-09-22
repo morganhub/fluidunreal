@@ -227,8 +227,8 @@ def accept(ctx: HostContext) -> None:
     ctx.warnings.extend(bundle.warnings)
     _state_the_limits(ctx, bundle)
     ctx.next_safe_actions.append(
-        f"fluidunreal run --operation <request importing bundle {bundle.bundle_id}> "
-        "(asset.import is not available until lot 2)"
+        f'fluidunreal run --project "{ctx.project.root}" --operation <an asset.import request whose '
+        f'target.bundle_id is "{bundle.bundle_id}">, then asset.audit on the same bundle'
     )
 
 
